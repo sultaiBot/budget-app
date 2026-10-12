@@ -1,11 +1,15 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.1.0';
+var APP_VERSION='2.2.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
-var SCHEMA=3;                      // current data schema version
-var DEF_CATS=[['أكل','🍔'],['قهوة','☕'],['بنزين','⛽'],['تسوق','🛍️'],['فواتير','🧾'],['سكن','🏠'],['صحة','💊'],['ترفيه','🎮'],['أخرى','📦']];
+var SCHEMA=4;                      // current data schema version
+var DEF_CATS=[['مطاعم','🍔'],['مقاضي','🛒'],['بنزين','⛽'],['سيارة','🔧'],['مواصلات','🚕'],['تسوق','🛍️'],['ترفيه','🎮'],['فواتير','🧾'],['صحة','💊'],['غيرها','📦']];
+var OTHER='غيرها';
+/* v3 -> v4 renames of old default categories (entries & learned merchants re-pointed, nothing deleted) */
+var RENAME4={'أكل':'مطاعم','أخرى':'غيرها'};
+var OLD_DEFAULTS3=['أكل','قهوة','بنزين','تسوق','فواتير','سكن','صحة','ترفيه','أخرى'];
 var MIGRATIONS={
   // 1 -> 2: add schema, per-cycle budgets, lastBackup
   1:function(d){d.cycleBudgets=d.cycleBudgets||{};
@@ -13,7 +17,24 @@ var MIGRATIONS={
     d.lastBackup=d.lastBackup||null;return d;}
   // 2 -> 3: learned merchant→category map + theme preference (nothing removed)
   ,2:function(d){d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};d.theme=d.theme||'auto';return d;}
-  // 3 -> 4: add future steps here
+  // 3 -> 4: new default category list. Rename أكل→مطاعم, أخرى→غيرها (tx + learned map follow);
+  // unused old defaults with no new equivalent (قهوة, سكن) are dropped only if nothing references them;
+  // custom categories and any category with entries are kept untouched; missing new defaults are added.
+  ,3:function(d){
+    var cats=Array.isArray(d.cats)?d.cats.slice():[],tx=Array.isArray(d.tx)?d.tx:[],mc=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};
+    var has=function(n){return cats.some(function(c){return c&&c.name===n;});};
+    Object.keys(RENAME4).forEach(function(o){var n=RENAME4[o];if(!has(o))return;
+      if(has(n)){cats=cats.filter(function(c){return c.name!==o;});}           // target exists: merge into it
+      else cats.forEach(function(c){if(c.name===o){c.name=n;c.emoji=DEF_CATS.find(function(x){return x[0]===n;})[1];}});
+      tx.forEach(function(t){if(t&&t.type!=='income'&&t.cat===o)t.cat=n;});
+      Object.keys(mc).forEach(function(k){if(mc[k]===o)mc[k]=n;});});
+    var used=function(n){return tx.some(function(t){return t&&t.cat===n;})||Object.keys(mc).some(function(k){return mc[k]===n;});};
+    cats=cats.filter(function(c){return !(c&&OLD_DEFAULTS3.indexOf(c.name)>=0&&!DEF_CATS.some(function(x){return x[0]===c.name;})&&!used(c.name));});
+    var byName={};cats.forEach(function(c){byName[c.name]=c;});
+    var out=[];DEF_CATS.forEach(function(x){if(x[0]===OTHER)return;out.push(byName[x[0]]||{name:x[0],emoji:x[1]});delete byName[x[0]];});
+    cats.forEach(function(c){if(byName[c.name]&&c.name!==OTHER)out.push(c);});   // kept old/custom cats, original order
+    out.push(byName[OTHER]||{name:OTHER,emoji:'📦'});
+    d.cats=out;d.tx=tx;d.merchantCats=mc;return d;}
 };
 function migrate(d){
   var v=Number(d.schema)||1;
@@ -81,7 +102,7 @@ function fmtD(d){return d.getDate()+' '+MONTHS[d.getMonth()];}
 function rangeHTML(c){return '<span class="n">'+c.start.getDate()+'</span> '+MONTHS[c.start.getMonth()]+' – <span class="n">'+c.end.getDate()+'</span> '+MONTHS[c.end.getMonth()]+(c.start.getFullYear()!==today().getFullYear()||c.end.getFullYear()!==today().getFullYear()?' <span class="n">'+c.end.getFullYear()+'</span>':'');}
 
 function addTx(o){var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
-  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':'أخرى'),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};if(o.time)t.time=o.time;
+  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':OTHER),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};if(o.time)t.time=o.time;
   S.tx.push(t);save();return t;}
 function updateTx(id,o){var t=S.tx.find(function(x){return x.id===id;});if(!t)return null;var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
   var oldCat=t.cat;t.type=o.type;t.amount=a;t.cat=o.cat;t.date=o.date||t.date;t.note=o.note||'';save();if(t.type==='expense'&&oldCat!==t.cat&&t.note&&typeof SmsParse!=='undefined')learnMerchant(t.note,t.cat);return t;}
@@ -184,7 +205,7 @@ function parseSms(){var txt=$('smsIn').value,out=$('smsOut');if(!txt.trim()){out
   var r=SmsParse.parse(txt,{cats:catNames(),learned:S.merchantCats,ref:today()});sms.r=r;
   if(r.credit){out.innerHTML='<div class="note-ok">💚 هذي رسالة إيداع أو استرداد'+(r.amount?' (<b class="n">'+money(r.amount)+'</b> ر.س)':'')+'، فما راح نسجلها كمصروف.'+(r.amount?'<br><button class="link" id="smsIncome" style="margin:6px 0 0">سجّلها كدخل</button>':'')+'</div>';return;}
   if(!(r.amount>0)){out.innerHTML='<div class="hint err" style="margin-top:12px">ما قدرت ألقى المبلغ في الرسالة 🤔 تأكد إنها رسالة شراء.</div>';return;}
-  var cat=r.cat||'أخرى';if(catNames().indexOf(cat)<0)cat=S.cats[S.cats.length-1].name;
+  var cat=r.cat||OTHER;if(catNames().indexOf(cat)<0)cat=S.cats[S.cats.length-1].name;
   out.innerHTML='<div class="sms-card"><div class="big2"><input id="smsAmt" inputmode="decimal" value="'+r.amount+'" style="font-size:34px;font-weight:800;text-align:center;max-width:none;background:none;width:100%" aria-label="المبلغ"></div>'+
     '<div class="f"><label>التصنيف</label><select id="smsCat">'+S.cats.map(function(c){return '<option'+(c.name===cat?' selected':'')+' value="'+esc(c.name)+'">'+c.emoji+' '+esc(c.name)+'</option>';}).join('')+'</select></div>'+
     '<div class="f"><label>المكان</label><input id="smsNote" maxlength="80" value="'+esc(r.merchant)+'" placeholder="—" style="text-align:right"></div>'+

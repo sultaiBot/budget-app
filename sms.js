@@ -46,15 +46,16 @@ function isCredit(text){var t=text.replace(/credit\s*card|بطاقة\s*ائتم�
   return !DEBIT.test(t);}
 /* keyword → list of preferred category names (first existing wins) */
 var KW=[
-  [/starbucks|ستاربكس|barn'?s|بارنز|dunkin|دانكن|tim\s*hortons|تيم\s*هورتنز|half\s*million|هاف\s*مليون|dose|دوز|caf[eé]|coffee|كافيه|كوفي|قهوة|كافي|espresso|roast/i,['قهوة','أكل']],
-  [/jahez|جاهز|hunger\s*station|هنقرستيشن|هنقر|mrsool|مرسول|keeta|كيتا|toyou|تويو|chefz|مطعم|restaurant|mc\s*donald|ماكدونالد|albaik|al\s*baik|البيك|kfc|كنتاكي|burger|برجر|herfy|هرفي|kudu|كودو|shawarma|شاورما|pizza|بيتزا|domino|subway|grill|مشويات|بخاري|مندي/i,['أكل']],
-  [/aldrees|الدريس|petromin|بترومين|sasco|ساسكو|naft|نفط|محطة|بنزين|وقود|fuel|petrol|gas\s*station|maraya|مرايا|المحروقات/i,['بنزين']],
-  [/panda|بنده|بندة|danube|الدانوب|tamimi|التميمي|othaim|العثيم|lulu|لولو|carrefour|كارفور|nesto|نستو|farm\s*superstores|المزرعة|bin\s*dawood|بن\s*داود|manuel|مانويل|hyper|هايبر|supermarket|سوبرماركت|بقالة|تموينات|grocery|nana|نعناع|ninja|نينجا/i,['مقاضي','بقالة','أكل']],
-  [/noon|نون|amazon|أمازون|امازون|jarir|جرير|extra|اكسترا|إكسترا|shein|شي\s*ان|namshi|نمشي|ikea|ايكيا|centrepoint|سنتربوينت|h&m|zara|زارا|mall|مول|store/i,['تسوق']],
-  [/careem|كريم|uber|اوبر|أوبر|bolt|jeeny|جيني|taxi|تاكسي|سارب|darb|درب|parking|مواقف|saptco|سابتكو|metro|مترو/i,['مواصلات','بنزين']],
-  [/pharmacy|صيدلية|صيدليه|nahdi|النهدي|dawaa|الدواء|whites|وايتس|hospital|مستشفى|clinic|عيادة|مستوصف|dental|أسنان|lab|مختبر/i,['صحة']],
-  [/stc(?!\s*pay)|mobily|موبايلي|zain|زين|سوا|كهرباء|electricity|sec\b|المياه|water|فاتورة|bill|سداد|internet|انترنت/i,['فواتير']],
-  [/netflix|نتفلكس|shahid|شاهد|spotify|سبوتيفاي|playstation|بلايستيشن|steam|xbox|cinema|سينما|vox|muvi|موفي|game|ألعاب|boulevard|بوليفارد/i,['ترفيه']]
+  [/aldrees|الدريس|sasco|ساسكو|naft|نفط|محطة|بنزين|وقود|fuel|petrol|gas\s*station|maraya|مرايا|المحروقات/i,['بنزين']],
+  [/oil\s*change|تغيير\s*(?:زيت|الزيت)|زيت|maintenance|صيانة|tyre|tire|كفرات|كفر|إطارات|اطارات|car\s*accessor|اكسسوارات\s*سيارات|parking|مواقف|car\s*wash|مغسلة|غسيل\s*سيارات|petromin\s*express|بترومين\s*اكسبرس|ورشة|workshop|قطع\s*غيار|spare\s*parts|auto\s*parts/i,['سيارة','بنزين']],
+  [/petromin|بترومين/i,['بنزين']],
+  [/panda|بنده|بندة|danube|الدانوب|tamimi|التميمي|othaim|العثيم|lulu|لولو|carrefour|كارفور|nesto|نستو|farm\s*superstores|\bfarm\b|المزرعة|bin\s*dawood|بن\s*داود|manuel|مانويل|hyper|هايبر|supermarket|سوبرماركت|سوبر\s*ماركت|بقالة|بقاله|تموينات|grocery|nana|نعناع|ninja|نينجا/i,['مقاضي','بقالة']],
+  [/starbucks|ستاربكس|barn'?s|بارنز|dunkin|دانكن|tim\s*hortons|تيم\s*هورتنز|half\s*million|هاف\s*مليون|dose|دوز|caf[eé]|coffee|كافيه|كوفي|قهوة|كافي|espresso|roast|jahez|جاهز|hunger\s*station|هنقرستيشن|هنقر|mrsool|مرسول|keeta|كيتا|toyou|تويو|chefz|مطعم|restaurant|mc\s*donald|ماكدونالد|albaik|al\s*baik|البيك|kfc|كنتاكي|burger|برجر|herfy|هرفي|kudu|كودو|shawarma|شاورما|pizza|بيتزا|domino|subway|grill|مشويات|بخاري|مندي/i,['مطاعم','قهوة','أكل']],
+  [/careem|كريم|uber|اوبر|أوبر|bolt|jeeny|جيني|taxi|تاكسي|سارب|darb|درب|saptco|سابتكو|metro|مترو/i,['مواصلات']],
+  [/pharmacy|صيدلية|صيدليه|nahdi|النهدي|dawaa|الدواء|whites|وايتس|hospital|مستشفى|clinic|عيادة|مستوصف|dental|أسنان|\blab\b|مختبر/i,['صحة']],
+  [/stc(?!\s*pay)|mobily|موبايلي|zain|زين|سوا|كهرباء|electricity|\bsec\b|المياه|water|فاتورة|bill|سداد|internet|انترنت/i,['فواتير']],
+  [/netflix|نتفلكس|shahid|شاهد|spotify|سبوتيفاي|playstation|بلايستيشن|steam|xbox|cinema|سينما|vox|muvi|موفي|game|ألعاب|boulevard|بوليفارد/i,['ترفيه']],
+  [/noon|نون|amazon|أمازون|امازون|jarir|جرير|extra|اكسترا|إكسترا|shein|شي\s*ان|namshi|نمشي|ikea|ايكيا|centrepoint|سنتربوينت|h&m|zara|زارا|mall|مول|clothes|ملابس|store/i,['تسوق']]
 ];
 function normMerchant(m){return String(m||'').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g,' ').trim();}
 function suggestCat(merchant,catNames,learned){var key=normMerchant(merchant);if(!key)return null;
