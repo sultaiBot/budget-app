@@ -1,17 +1,19 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.0.0';
+var APP_VERSION='2.1.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
-var SCHEMA=2;                      // current data schema version
+var SCHEMA=3;                      // current data schema version
 var DEF_CATS=[['أكل','🍔'],['قهوة','☕'],['بنزين','⛽'],['تسوق','🛍️'],['فواتير','🧾'],['سكن','🏠'],['صحة','💊'],['ترفيه','🎮'],['أخرى','📦']];
 var MIGRATIONS={
   // 1 -> 2: add schema, per-cycle budgets, lastBackup
   1:function(d){d.cycleBudgets=d.cycleBudgets||{};
     if(d.budget>0){var sd=Math.min(28,Math.max(1,parseInt(d.startDay,10)||27));d.cycleBudgets[cycleFor(today(),sd).startISO]=Number(d.budget);}
     d.lastBackup=d.lastBackup||null;return d;}
-  // 2 -> 3: add future steps here, e.g. 2:function(d){...;return d;}
+  // 2 -> 3: learned merchant→category map + theme preference (nothing removed)
+  ,2:function(d){d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};d.theme=d.theme||'auto';return d;}
+  // 3 -> 4: add future steps here
 };
 function migrate(d){
   var v=Number(d.schema)||1;
@@ -40,6 +42,7 @@ function normalize(d){
   d.cats=Array.isArray(d.cats)&&d.cats.length?d.cats:DEF_CATS.map(function(c){return {name:c[0],emoji:c[1]};});
   d.startDay=Math.min(28,Math.max(1,parseInt(d.startDay,10)||27));d.budget=Number(d.budget)||0;d.salary=Number(d.salary)||0;
   d.cycleBudgets=d.cycleBudgets&&typeof d.cycleBudgets==='object'?d.cycleBudgets:{};
+  d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};if(['auto','light','dark'].indexOf(d.theme)<0)d.theme='auto';
   if(!d.schema)d.schema=SCHEMA;return d;}
 function load(){var raw=null,d=null;try{raw=localStorage.getItem(KEY);d=raw?JSON.parse(raw):null;}catch(e){
     // corrupt JSON: preserve the raw text instead of overwriting it
@@ -78,15 +81,36 @@ function fmtD(d){return d.getDate()+' '+MONTHS[d.getMonth()];}
 function rangeHTML(c){return '<span class="n">'+c.start.getDate()+'</span> '+MONTHS[c.start.getMonth()]+' – <span class="n">'+c.end.getDate()+'</span> '+MONTHS[c.end.getMonth()]+(c.start.getFullYear()!==today().getFullYear()||c.end.getFullYear()!==today().getFullYear()?' <span class="n">'+c.end.getFullYear()+'</span>':'');}
 
 function addTx(o){var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
-  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':'أخرى'),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};
+  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':'أخرى'),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};if(o.time)t.time=o.time;
   S.tx.push(t);save();return t;}
 function updateTx(id,o){var t=S.tx.find(function(x){return x.id===id;});if(!t)return null;var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
-  t.type=o.type;t.amount=a;t.cat=o.cat;t.date=o.date||t.date;t.note=o.note||'';save();return t;}
+  var oldCat=t.cat;t.type=o.type;t.amount=a;t.cat=o.cat;t.date=o.date||t.date;t.note=o.note||'';save();if(t.type==='expense'&&oldCat!==t.cat&&t.note&&typeof SmsParse!=='undefined')learnMerchant(t.note,t.cat);return t;}
 function deleteTx(id){S.tx=S.tx.filter(function(x){return x.id!==id;});save();}
 
 function catBars(by){var ent=Object.keys(by).map(function(k){return [k,by[k]];}).sort(function(a,b){return b[1]-a[1];});var max=ent.length?ent[0][1]:0;
   return ent.length?ent.map(function(e){return '<div class="cat-row"><div class="hd"><span>'+catEmoji(e[0])+' '+esc(e[0])+'</span><b class="n">'+money(e[1])+' ر.س</b></div><div class="tr"><div style="width:'+(e[1]/max*100)+'%"></div></div></div>';}).join('')
     :'<div class="empty" style="padding:8px">ما فيه مصاريف في هذي الدورة</div>';}
+/* ===== Charts (pure SVG) ===== */
+var PAL=['#0e8a5f','#f2a33a','#4f7cff','#e0607e','#8e6be8','#9aa5a0'];
+function donutHTML(by){var ent=Object.keys(by).map(function(k){return [k,by[k]];}).filter(function(e){return e[1]>0;}).sort(function(a,b){return b[1]-a[1];});
+  if(!ent.length)return '';var tot=ent.reduce(function(a,e){return a+e[1];},0);
+  if(ent.length>6){var rest=ent.slice(5).reduce(function(a,e){return a+e[1];},0);ent=ent.slice(0,5);ent.push(['غيرها',rest]);}
+  var R0=50,C=2*Math.PI*R0,off=0,arcs='';
+  ent.forEach(function(e,i){var len=e[1]/tot*C;arcs+='<circle r="'+R0+'" cx="66" cy="66" fill="none" stroke="'+PAL[i%PAL.length]+'" stroke-width="20" stroke-dasharray="'+Math.max(0,len-(ent.length>1?1.5:0))+' '+C+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 66 66)"/>';off+=len;});
+  var svg='<svg viewBox="0 0 132 132" role="img" aria-label="توزيع المصروف"><circle r="'+R0+'" cx="66" cy="66" fill="none" stroke="var(--line)" stroke-width="20"/>'+arcs+
+    '<text x="66" y="60" text-anchor="middle" class="dc-t">صرفت</text><text x="66" y="80" text-anchor="middle" class="dc-v" direction="ltr">'+money(Math.round(tot))+'</text></svg>';
+  var lg=ent.map(function(e,i){return '<div><i style="background:'+PAL[i%PAL.length]+'"></i><span>'+(e[0]==='غيرها'?'':catEmoji(e[0])+' ')+esc(e[0])+'</span><b class="n">'+Math.round(e[1]/tot*100)+'%</b></div>';}).join('');
+  return '<div class="donut">'+svg+'<div class="legend">'+lg+'</div></div>';}
+function barsHTML(list){/* list: oldest→newest stats, drawn right→left (RTL) */
+  if(!list.length)return '';var W=320,H=150,top=22,bot=24,max=0;list.forEach(function(s){max=Math.max(max,s.spent,s.budget||0);});if(!max)max=1;
+  var n=list.length,slot=W/n,bw=Math.min(34,slot*0.55),out='';
+  list.forEach(function(s,i){var x=W-(i+0.5)*slot,h=(H-top-bot)*s.spent/max,y=H-bot-h,over=s.budget&&s.spent>s.budget,cur=i===n-1;
+    var col=over?'var(--red)':'var(--acc)';
+    if(s.budget){var by=H-bot-(H-top-bot)*s.budget/max;out+='<line x1="'+(x-bw/2-4)+'" x2="'+(x+bw/2+4)+'" y1="'+by+'" y2="'+by+'" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 2"/>';}
+    out+='<rect x="'+(x-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h,1)+'" rx="6" fill="'+col+'" opacity="'+(cur?1:0.6)+'"/>';
+    out+='<text x="'+x+'" y="'+(y-6)+'" text-anchor="middle" class="v" direction="ltr">'+(s.spent>=1000?(Math.round(s.spent/100)/10)+'k':Math.round(s.spent))+'</text>';
+    out+='<text x="'+x+'" y="'+(H-6)+'" text-anchor="middle">'+MONTHS[s.cycle.end.getMonth()]+'</text>';});
+  return '<div style="font-weight:600;margin-bottom:6px">مصروفك آخر الدورات</div><svg class="bars" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="مقارنة الدورات">'+out+'</svg><div class="hint" style="margin-top:2px">الخط المتقطع = الميزانية</div>';}
 function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(a,b){return a.date===b.date?(b.ts||0)-(a.ts||0):(a.date<b.date?1:-1);});
   var html='',cur='',t0=iso(today()),y=today();y.setDate(y.getDate()-1);var t1=iso(y);
   rows.forEach(function(t){if(t.date!==cur){if(cur)html+='</div>';cur=t.date;var dd=parseISO(t.date);
@@ -104,7 +128,7 @@ function render(){var s=summary(),c=s.cycle;
   var d=$('daily');
   if(s.remaining<0){d.className='daily neg';d.innerHTML='تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س';}
   else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(Math.floor(s.daily))+'</b> ر.س باليوم';}
-  $('cats').innerHTML=s.spent?catBars(s.byCat):'<div class="empty" style="padding:8px">ما صرفت شي في هذي الدورة بعد</div>';
+  $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما صرفت شي في هذي الدورة بعد</div>';
   var rows=S.tx.filter(function(t){return inCycle(t,c);});
   $('list').innerHTML=rows.length?txList(rows):'<div class="empty">ابدأ بتسجيل أول مصروف 👇<br>اضغط زر <b>+</b>، اكتب المبلغ، واختر التصنيف.</div>';}
 
@@ -133,6 +157,7 @@ function renderHistory(){var cmp=compare(),h=history();
     '<div class="row"><span>الدورة الماضية لنفس اليوم</span><b class="n">'+money(cmp.prevToDate)+' ر.س</b></div>'+
     '<div class="row"><span>الدورة الماضية كاملة</span><b class="n">'+money(cmp.prev.spent)+' ر.س</b></div>'+
     (cmp.prevToDate||cmp.cur.spent?'<div class="daily '+(diff>0?'neg':'')+'" style="margin-top:8px">'+(diff===0?'نفس مصروف الدورة الماضية':'صرفت <b class="n">'+money(Math.abs(diff))+'</b> ر.س '+word+' من الدورة الماضية لنفس اليوم')+'</div>':'')+'</div>';
+  $('histChart').innerHTML=barsHTML(h.slice(0,6).reverse());
   $('histList').innerHTML='<div class="card" style="padding-top:2px">'+h.map(function(st,i){var pct=st.budget?st.spent/st.budget*100:0,over=st.budget&&st.spent>st.budget;
     return '<button class="cyc" data-i="'+i+'"><span><b>'+rangeHTML(st.cycle)+'</b>'+(i===0?' <small style="display:inline;color:var(--acc)">(الحالية)</small>':'')+'<small>صرفت <span class="n">'+money(st.spent)+'</span> من <span class="n">'+money(st.budget)+'</span> ر.س</small><div class="mini'+(over?' over':'')+'"><div style="width:'+Math.min(100,pct)+'%"></div></div></span><span class="n '+(over?'bad':'ok')+'">'+(over?'-':'+')+money(Math.abs(st.remaining))+'</span></button>';}).join('')+'</div>';
   $('histMain').style.display='block';$('histDetail').style.display='none';
@@ -145,13 +170,41 @@ function showCycle(st){var rows=S.tx.filter(function(t){return inCycle(t,st.cycl
   $('histBack').onclick=renderHistory;
   $('histTx').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};}
 
+/* ===== Theme ===== */
+function applyTheme(){var t=S.theme||'auto',root=document.documentElement;if(t==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',t);
+  var dark=t==='dark'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
+  var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',dark?'#0f1412':'#0e8a5f');
+  var seg=$('themeSeg');if(seg)[].forEach.call(seg.children,function(b){b.classList.toggle('on',b.dataset.v===t);});}
+
+/* ===== Paste bank SMS ===== */
+var sms={r:null};
+function openSms(){$('smsIn').value='';$('smsOut').innerHTML='';$('smsPaste').style.display=(navigator.clipboard&&navigator.clipboard.readText)?'block':'none';openSheet('smsSheet');$('smsIn').focus();}
+function catNames(){return S.cats.map(function(c){return c.name;});}
+function parseSms(){var txt=$('smsIn').value,out=$('smsOut');if(!txt.trim()){out.innerHTML='';sms.r=null;return;}
+  var r=SmsParse.parse(txt,{cats:catNames(),learned:S.merchantCats,ref:today()});sms.r=r;
+  if(r.credit){out.innerHTML='<div class="note-ok">💚 هذي رسالة إيداع أو استرداد'+(r.amount?' (<b class="n">'+money(r.amount)+'</b> ر.س)':'')+'، فما راح نسجلها كمصروف.'+(r.amount?'<br><button class="link" id="smsIncome" style="margin:6px 0 0">سجّلها كدخل</button>':'')+'</div>';return;}
+  if(!(r.amount>0)){out.innerHTML='<div class="hint err" style="margin-top:12px">ما قدرت ألقى المبلغ في الرسالة 🤔 تأكد إنها رسالة شراء.</div>';return;}
+  var cat=r.cat||'أخرى';if(catNames().indexOf(cat)<0)cat=S.cats[S.cats.length-1].name;
+  out.innerHTML='<div class="sms-card"><div class="big2"><input id="smsAmt" inputmode="decimal" value="'+r.amount+'" style="font-size:34px;font-weight:800;text-align:center;max-width:none;background:none;width:100%" aria-label="المبلغ"></div>'+
+    '<div class="f"><label>التصنيف</label><select id="smsCat">'+S.cats.map(function(c){return '<option'+(c.name===cat?' selected':'')+' value="'+esc(c.name)+'">'+c.emoji+' '+esc(c.name)+'</option>';}).join('')+'</select></div>'+
+    '<div class="f"><label>المكان</label><input id="smsNote" maxlength="80" value="'+esc(r.merchant)+'" placeholder="—" style="text-align:right"></div>'+
+    '<div class="f"><label>التاريخ'+(r.time?' <span class="n">'+r.time+'</span>':'')+'</label><input id="smsDate" type="date" value="'+(r.date||iso(today()))+'"></div></div>'+
+    (r.learned?'<div class="hint" style="margin-top:6px">✨ التصنيف من اختيارك السابق لهذا المكان</div>':'')+
+    '<button class="btn" id="smsOk">تأكيد ✓</button>';}
+function confirmSms(){var r=sms.r||{},cat=$('smsCat').value,note=$('smsNote').value.trim();
+  try{addTx({type:'expense',amount:$('smsAmt').value,cat:cat,date:$('smsDate').value||iso(today()),note:note,time:r.time||null});}catch(e){$('smsAmt').focus();return;}
+  learnMerchant(note||r.merchant,cat);closeSheet();render();}
+function learnMerchant(m,cat){var k=SmsParse.normMerchant(m);if(!k)return;
+  var auto=SmsParse.suggestCat(m,catNames(),null);if(auto&&auto.cat===cat){if(S.merchantCats[k]){delete S.merchantCats[k];save();}return;}
+  S.merchantCats[k]=cat;save();}
+
 /* ===== Settings & backup ===== */
 function daysSince(isoStr){return isoStr?Math.floor((Date.now()-Date.parse(isoStr))/864e5):Infinity;}
 function openSettings(){$('sDay').value=S.startDay;$('sBudget').value=summary().budget||'';$('sSalary').value=S.salary||'';renderCatEdit();
   var ds=daysSince(S.lastBackup);
   $('backupRemind').innerHTML=(S.tx.length&&ds>=30)?'<div class="remind">💡 '+(S.lastBackup?'آخر نسخة احتياطية قبل <span class="n">'+ds+'</span> يوم.':'ما أخذت نسخة احتياطية للحين.')+' يفضّل تحفظ نسخة في ملفاتك.</div>':'';
   $('lastBackup').innerHTML=S.lastBackup?'آخر نسخة: <span class="n">'+S.lastBackup.slice(0,10)+'</span>':'';
-  $('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
+  applyTheme();$('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
 function renderCatEdit(){$('catEdit').innerHTML=S.cats.map(function(c,i){return '<span>'+c.emoji+' '+esc(c.name)+'<button data-i="'+i+'" aria-label="حذف">✕</button></span>';}).join('');}
 function saveSettings(){var d=parseInt($('sDay').value,10);if(d>=1&&d<=28)S.startDay=d;var b=parseNum($('sBudget').value);if(b>=0)setCurrentBudget(b);
   var sl=parseNum($('sSalary').value);S.salary=sl>0?sl:0;save();closeSheet();render();}
@@ -184,6 +237,13 @@ function bind(){
   $('addCat').onclick=function(){var n=$('newCat').value.trim();if(!n||S.cats.some(function(c){return c.name===n;}))return;
     S.cats.push({name:n,emoji:$('newEmoji').value.trim()||'🏷️'});save();$('newCat').value='';$('newEmoji').value='';renderCatEdit();};
   $('exportBtn').onclick=exportBackup;
+  $('themeSeg').onclick=function(e){var b=e.target.closest('button');if(!b)return;S.theme=b.dataset.v;save();applyTheme();};
+  if(window.matchMedia){var mq=matchMedia('(prefers-color-scheme: dark)');(mq.addEventListener?mq.addEventListener.bind(mq,'change'):mq.addListener.bind(mq))(applyTheme);}
+  $('smsLink').onclick=openSms;
+  $('smsIn').oninput=parseSms;
+  $('smsPaste').onclick=function(){navigator.clipboard.readText().then(function(t){$('smsIn').value=t||'';parseSms();}).catch(function(){$('smsIn').focus();});};
+  $('smsOut').onclick=function(e){if(e.target.id==='smsOk')confirmSms();
+    else if(e.target.id==='smsIncome'){addTx({type:'income',amount:sms.r.amount,cat:'دخل إضافي',date:sms.r.date||iso(today())});closeSheet();render();}};
   $('importBtn').onclick=function(){$('importFile').click();};
   $('importFile').onchange=function(){var f=this.files[0];if(!f)return;var rd=new FileReader();
     rd.onload=function(){try{JSON.parse(rd.result);if(!confirm('بيتم استبدال بياناتك الحالية بالنسخة الاحتياطية. متابعة؟'))return;importBackup(rd.result);closeSheet();render();alert('تم الاسترجاع ✅');}
@@ -192,12 +252,12 @@ function bind(){
     try{localStorage.setItem(KEY+'.before-clear',JSON.stringify(S));}catch(e){}localStorage.removeItem(KEY);load();closeSheet();render();showOnb();}};
   $('onbDone').onclick=function(){var b=parseNum($('onbBudget').value);if(!(b>0)){$('onbErr').textContent='اكتب ميزانيتك الشهرية';return;}
     var sl=parseNum($('onbSalary').value);S.salary=sl>0?sl:0;S.onboarded=true;setCurrentBudget(b);$('onb').style.display='none';render();};
-  window.addEventListener('storage',function(e){if(e.key===KEY){load();render();}});
+  window.addEventListener('storage',function(e){if(e.key===KEY){load();applyTheme();render();}});
 }
 function showOnb(){$('onbBudget').value='';$('onbSalary').value='';$('onb').style.display='flex';$('onbBudget').focus();}
 
-load();bind();render();if(!S.onboarded)showOnb();
+load();bind();applyTheme();render();if(!S.onboarded)showOnb();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
 })();

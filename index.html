@@ -10,22 +10,25 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'">
 <meta name="referrer" content="no-referrer">
+<script>try{var t=JSON.parse(localStorage.getItem('mizaniyati.v1')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>ميزانيتي</title>
 <style>
-:root{--bg:#f6f7f4;--card:#fff;--text:#16211c;--muted:#7a857f;--line:#eceee9;--acc:#0e8a5f;--acc-soft:#e3f3ec;--red:#d64545;--r:22px}
+:root{--bg:#f6f7f4;--card:#fff;--text:#16211c;--muted:#7a857f;--line:#eceee9;--acc:#0e8a5f;--acc-soft:#e3f3ec;--red:#d64545;--red-soft:#fbeaea;--warn-bg:#fff6e5;--warn:#8a5a00;--priv:#0b5d41;--shadow:rgba(0,0,0,.04);--r:22px;color-scheme:light}
+:root[data-theme=dark]{--bg:#0f1412;--card:#1a211e;--text:#e8eeeb;--muted:#8d9893;--line:#2a332f;--acc:#2fbf88;--acc-soft:#173a2c;--red:#ff6b6b;--red-soft:#3a1f1f;--warn-bg:#3a2f17;--warn:#f0c46a;--priv:#9fe3c6;--shadow:rgba(0,0,0,.3);color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1412;--card:#1a211e;--text:#e8eeeb;--muted:#8d9893;--line:#2a332f;--acc:#2fbf88;--acc-soft:#173a2c;--red:#ff6b6b;--red-soft:#3a1f1f;--warn-bg:#3a2f17;--warn:#f0c46a;--priv:#9fe3c6;--shadow:rgba(0,0,0,.3);color-scheme:dark}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"SF Arabic","Segoe UI","Noto Sans Arabic",Tahoma,sans-serif}
 body{max-width:480px;margin:0 auto;min-height:100vh;padding:0 18px 120px}
 .n{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
 button{font:inherit;border:none;background:none;color:inherit;cursor:pointer}
-input{font:inherit;color:inherit}
+input,textarea,select{font:inherit;color:inherit}
 .top{display:flex;justify-content:space-between;align-items:center;padding:18px 0 8px}
 .cycle{font-size:15px;font-weight:600}.cycle small{display:block;color:var(--muted);font-weight:400;font-size:13px;margin-top:2px}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--card);font-size:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-.hero{background:var(--card);border-radius:28px;padding:26px 22px;margin-top:10px;text-align:center;box-shadow:0 2px 14px rgba(0,0,0,.04)}
+.hero{background:var(--card);border-radius:28px;padding:26px 22px;margin-top:10px;text-align:center;box-shadow:0 2px 14px var(--shadow)}
 .hero .lbl{color:var(--muted);font-size:15px}
 .hero .big{font-size:52px;font-weight:800;letter-spacing:-1px;margin:6px 0 2px;line-height:1.1}
 .hero .big .cur{font-size:20px;font-weight:600;color:var(--muted);margin-right:4px}
@@ -37,9 +40,9 @@ input{font:inherit;color:inherit}
 .budget-tap{color:var(--acc);font-weight:600;border-bottom:1px dashed var(--acc)}
 .daily{margin-top:14px;background:var(--acc-soft);color:var(--acc);border-radius:16px;padding:12px;font-size:15px}
 .daily b{font-size:19px}
-.daily.neg{background:#fbeaea;color:var(--red)}
+.daily.neg{background:var(--red-soft);color:var(--red)}
 h3{font-size:17px;margin:28px 4px 12px}
-.card{background:var(--card);border-radius:var(--r);padding:16px 18px;box-shadow:0 2px 14px rgba(0,0,0,.04)}
+.card{background:var(--card);border-radius:var(--r);padding:16px 18px;box-shadow:0 2px 14px var(--shadow)}
 .cat-row{margin-bottom:14px}.cat-row:last-child{margin-bottom:0}
 .cat-row .hd{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
 .cat-row .tr{height:8px;background:var(--line);border-radius:5px;overflow:hidden}
@@ -77,10 +80,10 @@ h3{font-size:17px;margin:28px 4px 12px}
 .field input{border:none;background:none;outline:none;width:100%;font-size:16px;padding:2px 0}
 .btn{display:block;width:100%;padding:15px;border-radius:16px;background:var(--acc);color:#fff;font-weight:700;font-size:16px;margin-top:12px}
 .btn.ghost{background:var(--bg);color:var(--text)}
-.btn.danger{background:#fbeaea;color:var(--red)}
+.btn.danger{background:var(--red-soft);color:var(--red)}
 .set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);gap:12px}
 .set-row input{width:120px;text-align:center;background:var(--bg);border:none;border-radius:12px;padding:9px;font-size:16px;font-variant-numeric:tabular-nums}
-.privacy{background:var(--acc-soft);color:#0b5d41;border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.7;margin:12px 0}
+.privacy{background:var(--acc-soft);color:var(--priv);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.7;margin:12px 0}
 .cat-edit{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .cat-edit span{background:var(--bg);border-radius:12px;padding:6px 10px;font-size:14px}
 .cat-edit span button{color:var(--muted);margin-right:4px}
@@ -97,9 +100,24 @@ h3{font-size:17px;margin:28px 4px 12px}
 .cyc .ok{color:var(--acc)}.cyc .bad{color:var(--red)}
 .mini{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:6px;width:120px}
 .mini>div{height:100%;background:var(--acc)}.mini.over>div{background:var(--red)}
-.remind{background:#fff6e5;color:#8a5a00;border-radius:14px;padding:12px 14px;font-size:14px;margin:10px 0}
+.remind{background:var(--warn-bg);color:var(--warn);border-radius:14px;padding:12px 14px;font-size:14px;margin:10px 0}
 .back{color:var(--acc);font-size:15px}
 .sheet{padding-top:10px}.close-x{position:absolute;left:16px;top:12px;width:34px;height:34px;border-radius:50%;background:var(--bg);color:var(--muted);font-size:16px}
+.donut{display:flex;align-items:center;gap:16px}.donut svg{flex:none;width:132px;height:132px}
+.legend{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;font-size:14px}
+.legend div{display:flex;align-items:center;gap:7px}.legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.legend span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.legend b{font-weight:600}
+.dc-t{font-size:11px;fill:var(--muted)}.dc-v{font-size:17px;font-weight:800;fill:var(--text)}
+.bars{width:100%;height:auto;display:block}.bars text{font-size:11px;fill:var(--muted)}.bars .v{fill:var(--text);font-weight:600}
+.row2{display:flex;justify-content:center;gap:18px;margin-top:14px}.row2 .link{margin:0}
+.sms-ta{width:100%;min-height:120px;border:none;border-radius:14px;background:var(--bg);padding:12px;font-size:15px;resize:vertical;outline:none;direction:auto}
+.sms-card{background:var(--bg);border-radius:18px;padding:14px;margin-top:12px}
+.sms-card .big2{font-size:34px;font-weight:800;text-align:center;margin-bottom:8px}
+.sms-card .f{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);gap:10px;font-size:15px}
+.sms-card .f:last-child{border-bottom:none}.sms-card .f label{color:var(--muted);flex:none}
+.sms-card input,.sms-card select{background:var(--card);border:none;border-radius:10px;padding:7px 10px;font-size:15px;min-width:0;flex:1;max-width:210px;text-align:left}
+.sms-card select{text-align:right}
+.note-ok{background:var(--acc-soft);color:var(--acc);border-radius:14px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7}
 .ver{color:var(--muted);font-size:12px;text-align:center;margin-top:14px}
 </style>
 </head>
@@ -128,12 +146,19 @@ h3{font-size:17px;margin:28px 4px 12px}
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
   <div class="hint" id="addHint">اكتب المبلغ ثم اختر التصنيف</div>
   <div class="chips" id="chips"></div>
-  <button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button>
+  <div class="row2"><button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button><button class="link" id="smsLink">📩 لصق رسالة البنك</button></div>
   <div class="details" id="details">
     <div class="field"><label>ملاحظة</label><input id="note" type="text" maxlength="80" placeholder="اختياري"></div>
     <div class="field"><label>التاريخ</label><input id="date" type="date"></div>
   </div>
   <div id="editBtns" style="display:none"><button class="btn" id="saveEdit">حفظ</button><button class="btn danger" id="delBtn">حذف العملية</button></div>
+</div>
+
+<div class="sheet" id="smsSheet" role="dialog">
+  <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>رسالة البنك</h2>
+  <textarea id="smsIn" class="sms-ta" placeholder="الصق رسالة الشراء هنا…" autocomplete="off"></textarea>
+  <button class="btn ghost" id="smsPaste" style="display:none">📋 لصق</button>
+  <div id="smsOut"></div>
 </div>
 
 <div class="sheet" id="budgetSheet">
@@ -145,13 +170,14 @@ h3{font-size:17px;margin:28px 4px 12px}
 
 <div class="sheet" id="histSheet">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
-  <div id="histMain"><h2>السجل</h2><div id="histCmp"></div><div id="histList"></div></div>
+  <div id="histMain"><h2>السجل</h2><div class="card" id="histChart" style="margin-bottom:14px"></div><div id="histCmp"></div><div id="histList"></div></div>
   <div id="histDetail" style="display:none"></div>
 </div>
 
 <div class="sheet" id="setSheet">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>الإعدادات</h2>
   <div id="backupRemind"></div>
+  <div class="set-row"><span>المظهر</span><div class="seg" id="themeSeg" style="margin:0;width:190px"><button data-v="auto">تلقائي</button><button data-v="light">فاتح</button><button data-v="dark">داكن</button></div></div>
   <div class="set-row"><span>بداية الدورة (يوم الراتب)<br><small style="color:var(--muted)">من 1 إلى 28</small></span><input id="sDay" type="number" min="1" max="28" inputmode="numeric"></div>
   <div class="set-row"><span>ميزانية الدورة الحالية</span><input id="sBudget" type="text" inputmode="decimal"></div>
   <div class="set-row"><span>الراتب (اختياري)</span><input id="sSalary" type="text" inputmode="decimal" placeholder="—"></div>
@@ -184,6 +210,7 @@ h3{font-size:17px;margin:28px 4px 12px}
   <div class="hint err" id="onbErr"></div>
   <button class="btn" id="onbDone">ابدأ</button>
 </div>
+<script src="sms.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
