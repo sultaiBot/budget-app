@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.3.1';
+var APP_VERSION='2.3.2';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -118,7 +118,7 @@ function deleteTx(id){S.tx=S.tx.filter(function(x){return x.id!==id;});save();}
 
 function catBars(by){var ent=Object.keys(by).map(function(k){return [k,by[k]];}).sort(function(a,b){return b[1]-a[1];});var max=ent.length?ent[0][1]:0;
   return ent.length?ent.map(function(e){return '<div class="cat-row"><div class="hd"><span>'+catEmoji(e[0])+' '+esc(e[0])+'</span><b class="n">'+money(e[1])+' ر.س</b></div><div class="tr"><div style="width:'+(e[1]/max*100)+'%"></div></div></div>';}).join('')
-    :'<div class="empty" style="padding:8px">ما فيه مصاريف في هذي الدورة</div>';}
+    :'<div class="empty" style="padding:8px">ما فيه مصروف</div>';}
 /* ===== Charts (pure SVG) ===== */
 var PAL=['#0e8a5f','#f2a33a','#4f7cff','#e0607e','#8e6be8','#9aa5a0'];
 function donutHTML(by){var ent=Object.keys(by).map(function(k){return [k,by[k]];}).filter(function(e){return e[1]>0;}).sort(function(a,b){return b[1]-a[1];});
@@ -139,7 +139,7 @@ function barsHTML(list){/* list: oldest→newest stats, drawn right→left (RTL)
     out+='<rect x="'+(x-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+Math.max(h,1)+'" rx="6" fill="'+col+'" opacity="'+(cur?1:0.6)+'"/>';
     out+='<text x="'+x+'" y="'+(y-6)+'" text-anchor="middle" class="v" direction="ltr">'+(s.spent>=1000?(Math.round(s.spent/100)/10)+'k':Math.round(s.spent))+'</text>';
     out+='<text x="'+x+'" y="'+(H-6)+'" text-anchor="middle">'+MONTHS[s.cycle.end.getMonth()]+'</text>';});
-  return '<div style="font-weight:600;margin-bottom:6px">مصروفك آخر الدورات</div><svg class="bars" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="مقارنة الدورات">'+out+'</svg><div class="hint" style="margin-top:2px">الخط المتقطع = الميزانية</div>';}
+  return '<div style="font-weight:600;margin-bottom:6px">آخر الدورات</div><svg class="bars" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="مقارنة الدورات">'+out+'</svg>';}
 function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(a,b){return a.date===b.date?(b.ts||0)-(a.ts||0):(a.date<b.date?1:-1);});
   var html='',cur='',t0=iso(today()),y=today();y.setDate(y.getDate()-1);var t1=iso(y);
   rows.forEach(function(t){if(t.date!==cur){if(cur)html+='</div>';cur=t.date;var dd=parseISO(t.date);
@@ -155,15 +155,15 @@ function render(){var s=summary(),c=s.cycle;
   var pct=s.budget?s.spent/s.budget*100:0;$('barFill').style.width=Math.min(100,pct)+'%';$('bar').className='ring-bar'+(pct>100?' over':'');
   $('spent').textContent=money(s.spent);$('budgetTap').textContent=money(s.budget)+' ر.س ✎';
   var d=$('daily'),dl='<span class="n">'+s.daysLeft+'</span>',td=s.spentToday?'<small>صرفت اليوم <span class="n">'+money(s.spentToday)+'</span> ر.س</small>':'';
-  if(s.remaining<=0){d.className='daily neg';d.innerHTML=(s.remaining<0?'تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س':'خلصت الميزانية')+'<small>المتاح لكل يوم: <span class="n">0</span> ر.س • باقي '+dl+' يوم</small>'+td;}
+  if(s.remaining<=0){d.className='daily neg';d.innerHTML=(s.remaining<0?'تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س':'خلصت الميزانية')+'<small>لكل يوم <span class="n">0</span> • باقي '+dl+' يوم</small>'+td;}
   else if(s.daysLeft===1){d.className='daily';d.innerHTML='تقدر تصرف اليوم <b class="n">'+money(s.daily)+'</b> ر.س<small>آخر يوم في الدورة</small>'+td;}
-  else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(s.daily)+'</b> ر.س كل يوم<small>باقي '+dl+' يوم (مع اليوم)</small>'+td;}
-  $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما صرفت شي في هذي الدورة بعد</div>';
+  else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(s.daily)+'</b> ر.س كل يوم<small>باقي '+dl+' يوم</small>'+td;}
+  $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما فيه مصروف للحين</div>';
   var rows=S.tx.filter(function(t){return inCycle(t,c)&&t.type!=='income';}),inc=S.tx.filter(function(t){return inCycle(t,c)&&t.type==='income';});
   $('incWrap').style.display=inc.length?'block':'none';$('incList').innerHTML=txList(inc);
   $('incTot').textContent='+'+money(inc.reduce(function(a,t){return a+t.amount;},0));
   updateBadge(s);
-  $('list').innerHTML=rows.length?txList(rows):'<div class="empty">ابدأ بتسجيل أول مصروف 👇<br>اضغط زر <b>+</b>، اكتب المبلغ، واختر التصنيف.</div>';}
+  $('list').innerHTML=rows.length?txList(rows):'<div class="empty">سجّل أول مصروف من <b>+</b></div>';}
 
 /* ===== Sheets ===== */
 var openSheetEl=null,lockY=null;
@@ -177,7 +177,7 @@ var add={type:'expense',editId:null,cat:null};
 function renderChips(){var list=add.type==='income'?[{name:'راتب',emoji:'💵'},{name:'دخل إضافي',emoji:'💰'},{name:'أخرى',emoji:'📦'}]:S.cats;
   $('chips').classList.toggle('compact',!!add.editId);
   var rec=(!add.editId&&add.type==='expense')?recentMerchants():[];
-  $('recent').innerHTML=rec.length?'<span class="rl">آخر الأماكن</span>'+rec.map(function(r,i){return '<button class="rchip'+(add.quick===i?' sel':'')+'" data-i="'+i+'">'+catEmoji(r.cat)+' '+esc(r.note)+'</button>';}).join(''):'';
+  $('recent').innerHTML=rec.length?rec.map(function(r,i){return '<button class="rchip'+(add.quick===i?' sel':'')+'" data-i="'+i+'">'+catEmoji(r.cat)+' '+esc(r.note)+'</button>';}).join(''):'';
   $('chips').innerHTML=list.map(function(c){return '<button class="chip'+((add.editId||add.quick!=null)&&add.cat===c.name?' sel':'')+'" data-cat="'+esc(c.name)+'"><span class="e">'+c.emoji+'</span>'+esc(c.name)+'</button>';}).join('');}
 function setType(t){add.type=t;[].forEach.call($('typeSeg').children,function(b){b.classList.toggle('on',b.dataset.t===t);});renderChips();}
 function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);}).forEach(function(t){
@@ -186,11 +186,11 @@ function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){re
     var amt=same.length>=2&&same[0].amount===same[1].amount?same[0].amount:null;
     out.push({note:t.note,cat:t.cat,amount:amt});});return out;}
 function pickRecent(i){var r=recentMerchants()[i];if(!r)return;add.quick=i;add.cat=r.cat;$('note').value=r.note;if(r.amount&&!$('amt').value)$('amt').value=r.amount;
-  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent=r.amount?'نفس المبلغ المعتاد — اضغط حفظ':'اكتب المبلغ ثم اضغط حفظ';renderChips();softFocus($('amt'));}
+  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent='';renderChips();softFocus($('amt'));}
 function openAdd(tx){add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
   $('amt').value=tx?tx.amount:'';$('note').value=tx?tx.note:'';$('date').value=tx?tx.date:iso(today());
   $('details').classList.toggle('show',!!(tx&&tx.note));$('editBtns').style.display=tx?'flex':'none';$('smsLink').style.display=tx?'none':'flex';$('addSheet').classList.toggle('editing',!!tx);
-  var h=$('addHint');h.className='hint';h.textContent=tx?'عدّل وغيّر التصنيف أو اضغط حفظ':'اكتب المبلغ ثم اختر التصنيف';
+  var h=$('addHint');h.className='hint';h.textContent='';
   openSheet('addSheet');softFocus($('amt'),$('addSheet'));}
 function commit(cat){var o={type:add.type,amount:$('amt').value,cat:cat,date:$('date').value||iso(today()),note:$('note').value.trim()};
   var snap=snapshot();
@@ -230,18 +230,18 @@ function renderHistory(){var cmp=compare(),h=history();
   var diff=cmp.cur.spent-cmp.prevToDate,word=diff>0?'أكثر':'أقل';
   $('histSearch').value='';$('histFound').innerHTML='';
   if(!cmp.prev.count){$('histCmp').innerHTML='';}else
-  $('histCmp').innerHTML='<div class="hist-cmp"><b>هذي الدورة مقابل اللي قبلها</b>'+
-    '<div class="row"><span>صرفت لين الحين (يوم <span class="n">'+cmp.dayN+'</span>)</span><b class="n">'+money(cmp.cur.spent)+' ر.س</b></div>'+
-    '<div class="row"><span>الدورة الماضية لنفس اليوم</span><b class="n">'+money(cmp.prevToDate)+' ر.س</b></div>'+
-    '<div class="row"><span>الدورة الماضية كاملة</span><b class="n">'+money(cmp.prev.spent)+' ر.س</b></div>'+
-    (cmp.prevToDate||cmp.cur.spent?'<div class="daily '+(diff>0?'neg':'')+'" style="margin-top:8px">'+(diff===0?'نفس مصروف الدورة الماضية':'صرفت <b class="n">'+money(Math.abs(diff))+'</b> ر.س '+word+' من الدورة الماضية لنفس اليوم')+'</div>':'')+'</div>';
+  $('histCmp').innerHTML='<div class="hist-cmp"><b>مقارنة بالدورة الماضية</b>'+
+    '<div class="row"><span>الحين (يوم <span class="n">'+cmp.dayN+'</span>)</span><b class="n">'+money(cmp.cur.spent)+' ر.س</b></div>'+
+    '<div class="row"><span>الماضية لنفس اليوم</span><b class="n">'+money(cmp.prevToDate)+' ر.س</b></div>'+
+    '<div class="row"><span>الماضية كاملة</span><b class="n">'+money(cmp.prev.spent)+' ر.س</b></div>'+
+    (cmp.prevToDate||cmp.cur.spent?'<div class="daily '+(diff>0?'neg':'')+'" style="margin-top:8px">'+(diff===0?'نفس الماضية':'صرفت <b class="n">'+money(Math.abs(diff))+'</b> ر.س '+word+' من الماضية')+'</div>':'')+'</div>';
   $('histChart').innerHTML=barsHTML(h.slice(0,6).reverse());
   $('histList').innerHTML='<div class="card" style="padding-top:2px">'+h.map(function(st,i){var pct=st.budget?st.spent/st.budget*100:0,over=st.budget&&st.spent>st.budget;
     return '<button class="cyc" data-i="'+i+'"><span><b>'+rangeHTML(st.cycle)+'</b>'+(i===0?' <small style="display:inline;color:var(--acc)">(الحالية)</small>':'')+'<small>صرفت <span class="n">'+money(st.spent)+'</span> من <span class="n">'+money(st.budget)+'</span> ر.س</small><div class="mini'+(over?' over':'')+'"><div style="width:'+Math.min(100,pct)+'%"></div></div></span><span class="n '+(over?'bad':'ok')+'">'+(over?'-':'+')+money(Math.abs(st.remaining))+'</span></button>';}).join('')+'</div>';
   $('histMain').style.display='block';$('histDetail').style.display='none';
   $('histList').onclick=function(e){var b=e.target.closest('.cyc');if(b)showCycle(h[+b.dataset.i]);};}
 function showCycle(st){var rows=S.tx.filter(function(t){return inCycle(t,st.cycle);});
-  $('histDetail').innerHTML='<button class="back" id="histBack">→ رجوع للسجل</button><h2>'+rangeHTML(st.cycle)+'</h2>'+
+  $('histDetail').innerHTML='<button class="back" id="histBack">→ رجوع</button><h2>'+rangeHTML(st.cycle)+'</h2>'+
     '<div class="hist-cmp"><div class="row"><span>الميزانية</span><b class="n">'+money(st.budget)+' ر.س</b></div><div class="row"><span>المصروف</span><b class="n">'+money(st.spent)+' ر.س</b></div>'+(st.income?'<div class="row"><span>الدخل</span><b class="n">'+money(st.income)+' ر.س</b></div>':'')+'<div class="row"><span>'+(st.remaining<0?'تجاوزت بـ':'وفّرت')+'</span><b class="n" style="color:'+(st.remaining<0?'var(--red)':'var(--acc)')+'">'+money(Math.abs(st.remaining))+' ر.س</b></div></div>'+
     '<div class="card">'+catBars(st.byCat)+'</div><h3>العمليات</h3><div class="card" id="histTx" style="padding-top:2px">'+(txList(rows)||'<div class="empty">ما فيه عمليات</div>')+'</div>';
   $('histMain').style.display='none';$('histDetail').style.display='block';$('histSheet').scrollTop=0;
@@ -263,14 +263,14 @@ function openSms(text){$('smsIn').value='';$('smsOut').innerHTML='';$('smsPaste'
 function catNames(){return S.cats.map(function(c){return c.name;});}
 function parseSms(){var txt=$('smsIn').value,out=$('smsOut');if(!txt.trim()){out.innerHTML='';sms.r=null;return;}
   var r=SmsParse.parse(txt,{cats:catNames(),learned:S.merchantCats,ref:today()});sms.r=r;
-  if(r.credit){out.innerHTML='<div class="note-ok">💚 '+(r.salary?'هذي رسالة <b>راتب</b>':'هذي رسالة إيداع أو استرداد')+(r.amount?' (<b class="n">'+money(r.amount)+'</b> ر.س)':'')+'، فما راح نسجلها كمصروف.'+(r.amount?'<br><button class="link" id="smsIncome" style="margin:6px 0 0">'+(r.salary?'سجّلها كدخل (راتب)':'سجّلها كدخل')+'</button>':'')+'</div>';return;}
-  if(!(r.amount>0)){out.innerHTML='<div class="hint err" style="margin-top:12px">ما قدرت ألقى المبلغ في الرسالة 🤔 تأكد إنها رسالة شراء.</div>';return;}
+  if(r.credit){out.innerHTML='<div class="note-ok">💚 '+(r.salary?'<b>راتب</b>':'إيداع')+(r.amount?' (<b class="n">'+money(r.amount)+'</b> ر.س)':'')+' — مو مصروف'+(r.amount?'<br><button class="link" id="smsIncome" style="margin:6px 0 0">'+'سجّلها دخل'+'</button>':'')+'</div>';return;}
+  if(!(r.amount>0)){out.innerHTML='<div class="hint err" style="margin-top:12px">ما لقيت المبلغ 🤔</div>';return;}
   var cat=r.cat||OTHER;if(catNames().indexOf(cat)<0)cat=S.cats[S.cats.length-1].name;
   out.innerHTML='<div class="sms-card"><div class="big2"><input id="smsAmt" inputmode="decimal" value="'+r.amount+'" style="font-size:34px;font-weight:800;text-align:center;max-width:none;background:none;width:100%" aria-label="المبلغ"></div>'+
     '<div class="f"><label>التصنيف</label><select id="smsCat">'+S.cats.map(function(c){return '<option'+(c.name===cat?' selected':'')+' value="'+esc(c.name)+'">'+c.emoji+' '+esc(c.name)+'</option>';}).join('')+'</select></div>'+
     '<div class="f"><label>المكان</label><input id="smsNote" maxlength="80" value="'+esc(r.merchant)+'" placeholder="—" style="text-align:right"></div>'+
     '<div class="f"><label>التاريخ'+(r.time?' <span class="n">'+r.time+'</span>':'')+'</label><input id="smsDate" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" dir="ltr" value="'+dmy(r.date||iso(today()))+'"></div></div>'+
-    (r.learned?'<div class="hint" style="margin-top:6px">✨ التصنيف من اختيارك السابق لهذا المكان</div>':'')+
+    (r.learned?'<div class="hint" style="margin-top:6px">✨ من اختيارك السابق</div>':'')+
     '<button class="btn" id="smsOk">تأكيد ✓</button>';}
 function confirmSms(){var r=sms.r||{},cat=$('smsCat').value,note=$('smsNote').value.trim(),d=fromDmy($('smsDate').value);
   if(!d){$('smsDate').classList.add('bad');$('smsDate').focus();return;}
@@ -291,7 +291,7 @@ function learnFromTx(t){if(!t||t.type!=='expense'||!t.cat)return;
 function daysSince(isoStr){return isoStr?Math.floor((Date.now()-Date.parse(isoStr))/864e5):Infinity;}
 function openSettings(){$('sDay').value=S.startDay;$('sBudget').value=summary().budget||'';$('sSalary').value=S.salary||'';renderCatEdit();
   var ds=daysSince(S.lastBackup);
-  $('backupRemind').innerHTML=(S.tx.length&&ds>=30)?'<div class="remind">💡 '+(S.lastBackup?'آخر نسخة احتياطية قبل <span class="n">'+ds+'</span> يوم.':'ما أخذت نسخة احتياطية للحين.')+' يفضّل تحفظ نسخة في ملفاتك.</div>':'';
+  $('backupRemind').innerHTML=(S.tx.length&&ds>=30)?'<div class="remind">💡 '+(S.lastBackup?'آخر نسخة قبل <span class="n">'+ds+'</span> يوم':'ما عندك نسخة احتياطية')+'</div>':'';
   $('lastBackup').innerHTML=S.lastBackup?'آخر نسخة: <span class="n">'+S.lastBackup.slice(0,10)+'</span>':'';
   renderBadgeToggle();$('badgeRow').style.display=('setAppBadge' in navigator)?'flex':'none';applyTheme();$('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
 function renderCatEdit(){$('catEdit').innerHTML=S.cats.map(function(c,i){return '<span>'+c.emoji+' '+esc(c.name)+'<button data-i="'+i+'" aria-label="حذف '+esc(c.name)+'">✕</button></span>';}).join('');}
@@ -344,11 +344,11 @@ function bind(){
     else if(e.target.id==='smsIncome'){addTx({type:'income',amount:sms.r.amount,cat:sms.r.salary?'راتب':'دخل إضافي',date:sms.r.date||iso(today())});closeSheet();render();}};
   $('importBtn').onclick=function(){$('importFile').click();};
   $('importFile').onchange=function(){var f=this.files[0];if(!f)return;var rd=new FileReader();
-    rd.onload=function(){try{JSON.parse(rd.result);if(!confirm('بيتم استبدال بياناتك الحالية بالنسخة الاحتياطية. متابعة؟'))return;importBackup(rd.result);closeSheet();render();alert('تم الاسترجاع ✅');}
+    rd.onload=function(){try{JSON.parse(rd.result);if(!confirm('تستبدل بياناتك الحالية بالنسخة؟'))return;importBackup(rd.result);closeSheet();render();alert('تم الاسترجاع ✅');}
       catch(e){alert('الملف غير صالح');}};rd.readAsText(f);this.value='';};
-  $('clearBtn').onclick=function(){if(confirm('بيتم مسح كل العمليات والإعدادات نهائياً. متأكد؟')&&confirm('آخر تأكيد: ما تقدر ترجعها إلا من نسخة احتياطية.')){
+  $('clearBtn').onclick=function(){if(confirm('تمسح كل البيانات نهائياً؟')&&confirm('متأكد؟ ما ترجع إلا من نسخة احتياطية.')){
     try{localStorage.setItem(KEY+'.before-clear',JSON.stringify(S));}catch(e){}localStorage.removeItem(KEY);load();closeSheet();render();showOnb();}};
-  $('onbDone').onclick=function(){var b=parseNum($('onbBudget').value);if(!(b>0)){$('onbErr').textContent='اكتب ميزانيتك الشهرية';return;}
+  $('onbDone').onclick=function(){var b=parseNum($('onbBudget').value);if(!(b>0)){$('onbErr').textContent='اكتب الميزانية';return;}
     var sl=parseNum($('onbSalary').value);S.salary=sl>0?sl:0;S.onboarded=true;setCurrentBudget(b);$('onb').style.display='none';render();};
   window.addEventListener('storage',function(e){if(e.key===KEY){load();applyTheme();render();}});
 }

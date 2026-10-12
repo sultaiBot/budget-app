@@ -147,6 +147,7 @@ h3{font-size:17px;margin:28px 4px 12px}
 .tgl.on{background-color:var(--acc)}.tgl.on::after{right:22px}
 .help{padding:14px 0;border-bottom:1px solid var(--line)}.help summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
 .help ol{margin:6px 0 0;padding-right:20px;line-height:1.9;font-size:14px}.help code{direction:ltr;unicode-bidi:isolate;background:var(--bg);border-radius:6px;padding:1px 5px;font-size:12px;word-break:break-all}
+.mini-help{border:none;text-align:center;padding:4px 0}.mini-help summary{justify-content:center;font-weight:400;font-size:12px;color:var(--muted)}.mini-help ol{text-align:right}
 .saved{color:var(--acc);font-size:13px;text-align:center;opacity:0;transition:.2s;min-height:18px}.saved.show{opacity:1}
 input.bad{outline:2px solid var(--red)}
 .ver{color:var(--muted);font-size:12px;text-align:center;margin-top:14px}
@@ -179,7 +180,7 @@ html.locked,html.locked body{overflow:hidden}
 <div class="card" id="cats"></div>
 <h3>آخر العمليات</h3>
 <div class="card" id="list" style="padding-top:2px"></div>
-<div id="incWrap" style="display:none"><div class="inc-h"><span>💵 الدخل في هذي الدورة</span><span class="n" id="incTot"></span></div><div class="card inc-card" id="incList" style="padding-top:2px"></div></div>
+<div id="incWrap" style="display:none"><div class="inc-h"><span>💵 الدخل</span><span class="n" id="incTot"></span></div><div class="card inc-card" id="incList" style="padding-top:2px"></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <button class="fab" id="fab" aria-label="إضافة">+</button>
 <div class="scrim" id="scrim"></div>
@@ -190,12 +191,12 @@ html.locked,html.locked body{overflow:hidden}
   <div class="recent" id="recent"></div>
   <div class="seg" id="typeSeg"><button data-t="expense" class="on">مصروف</button><button data-t="income">دخل</button></div>
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
-  <div class="hint" id="addHint">اكتب المبلغ ثم اختر التصنيف</div>
+  <div class="hint" id="addHint"></div>
   <div class="chips" id="chips"></div>
   <button class="btn" id="quickSave" style="display:none">حفظ</button>
-  <div class="row2"><button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button></div>
+  <div class="row2"><button class="link" id="detailsLink">+ ملاحظة / تاريخ</button></div>
   <div class="details" id="details">
-    <div class="field"><label>ملاحظة</label><input id="note" type="text" maxlength="80" placeholder="اختياري"></div>
+    <div class="field"><label>ملاحظة</label><input id="note" type="text" maxlength="80"></div>
     <div class="field"><label>التاريخ</label><input id="date" type="date"></div>
   </div>
   <div id="editBtns" class="editbar" style="display:none"><button class="btn" id="saveEdit">حفظ</button><button class="btn danger" id="delBtn">حذف</button></div>
@@ -203,7 +204,7 @@ html.locked,html.locked body{overflow:hidden}
 
 <div class="sheet" id="smsSheet" role="dialog">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>رسالة البنك</h2>
-  <textarea id="smsIn" class="sms-ta" placeholder="الصق رسالة الشراء هنا…" autocomplete="off"></textarea>
+  <textarea id="smsIn" class="sms-ta" placeholder="الصق الرسالة هنا" autocomplete="off"></textarea>
   <button class="btn ghost" id="smsPaste" style="display:none">📋 لصق</button>
   <div id="smsOut"></div>
 </div>
@@ -211,13 +212,12 @@ html.locked,html.locked body{overflow:hidden}
 <div class="sheet" id="budgetSheet">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>ميزانية هذي الدورة</h2>
   <div class="amount-in"><input id="budgetIn" type="text" inputmode="decimal"><span>ر.س</span></div>
-  <div class="hint">تنحفظ لهذي الدورة وتصير الافتراضية للدورات الجاية</div>
   <button class="btn" id="budgetSave">حفظ</button>
 </div>
 
 <div class="sheet" id="histSheet">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
-  <h2>السجل</h2><input class="search" id="histSearch" type="search" placeholder="🔎 ابحث بالمكان أو الملاحظة أو التصنيف" autocomplete="off"><div id="histFound"></div>
+  <h2>السجل</h2><input class="search" id="histSearch" type="search" placeholder="🔎 بحث" autocomplete="off"><div id="histFound"></div>
   <div id="histMain"><div class="card" id="histChart" style="margin-bottom:14px"></div><div id="histCmp"></div><div id="histList"></div></div>
   <div id="histDetail" style="display:none"></div>
 </div>
@@ -226,51 +226,47 @@ html.locked,html.locked body{overflow:hidden}
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>الإعدادات</h2>
   <div id="backupRemind"></div>
   <div class="set-row"><span>المظهر</span><div class="seg" id="themeSeg" style="margin:0;width:190px"><button data-v="auto">تلقائي</button><button data-v="light">فاتح</button><button data-v="dark">داكن</button></div></div>
-  <div class="set-row"><span>بداية الدورة (يوم الراتب)<br><small style="color:var(--muted)">من 1 إلى 28</small></span><input id="sDay" type="number" min="1" max="28" inputmode="numeric"></div>
-  <div class="set-row"><span>ميزانية الدورة الحالية</span><input id="sBudget" type="text" inputmode="decimal"></div>
-  <div class="set-row"><span>الراتب (اختياري)</span><input id="sSalary" type="text" inputmode="decimal" placeholder="—"></div>
+  <div class="set-row"><span>يوم الراتب</span><input id="sDay" type="number" min="1" max="28" inputmode="numeric"></div>
+  <div class="set-row"><span>ميزانية الدورة</span><input id="sBudget" type="text" inputmode="decimal"></div>
+  <div class="set-row"><span>الراتب</span><input id="sSalary" type="text" inputmode="decimal" placeholder="—"></div>
   <div style="padding:14px 0;border-bottom:1px solid var(--line)">
     <div>التصنيفات</div>
     <div class="cat-edit" id="catEdit"></div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <input id="newEmoji" maxlength="4" placeholder="🙂" style="width:56px;text-align:center;background:var(--bg);border:none;border-radius:12px;padding:9px">
-      <input id="newCat" placeholder="اسم تصنيف جديد" style="flex:1;background:var(--bg);border:none;border-radius:12px;padding:9px">
+      <input id="newCat" placeholder="تصنيف جديد" style="flex:1;min-width:0;background:var(--bg);border:none;border-radius:12px;padding:9px">
       <button id="addCat" style="color:var(--acc);font-weight:700">إضافة</button>
     </div>
   </div>
-  <div class="set-row" id="badgeRow" style="display:none"><span>رقم على أيقونة التطبيق<br><small style="color:var(--muted)">يعرض كم تقدر تصرف اليوم</small></span><button class="tgl" id="badgeTgl" role="switch" aria-checked="false" aria-label="رقم على أيقونة التطبيق"></button></div>
+  <div class="set-row" id="badgeRow" style="display:none"><span>رقم على الأيقونة</span><button class="tgl" id="badgeTgl" role="switch" aria-checked="false" aria-label="رقم على الأيقونة"></button></div>
   <div class="saved" id="setSaved">✓ انحفظ</div>
-  <details class="help" id="autoHelp"><summary>⚡ تسجيل تلقائي من رسالة البنك</summary>
-    <div class="hint" style="text-align:right;margin:4px 0 6px">خلّ الآيفون يفتح ميزانيتي برسالة الشراء جاهزة، وأنت بس تضغط «تأكيد».</div>
-    <ol>
-      <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← تبويب <b>الأتمتة</b> ← <b>+</b> ← <b>أتمتة شخصية</b>.</li>
-      <li>اختر <b>الرسائل</b> (Message).</li>
-      <li>في <b>المرسل</b> اختر اسم البنك (مثل AlRajhiBank)، وفي <b>الرسالة تحتوي</b> اكتب <b>شراء</b> (أو Purchase إذا رسائلك إنجليزي). اضغط التالي.</li>
-      <li>أضف إجراء <b>ترميز عنوان URL</b> (URL Encode) وخلّ مدخله <b>مدخل الاختصار</b> (Shortcut Input ← الرسالة/المحتوى).</li>
-      <li>أضف إجراء <b>نص</b> (Text) واكتب فيه:<br><code>https://sultaibot.github.io/budget-app/?sms=</code> ثم أضف بعده متغير <b>النص المرمّز</b> (URL Encoded Text) بدون مسافة.</li>
-      <li>أضف إجراء <b>فتح عناوين URL</b> (Open URLs) ومدخله <b>النص</b>.</li>
-      <li>اضغط التالي وطفّ <b>اسأل قبل التشغيل</b> (Ask Before Running)، ثم <b>تم</b>.</li>
-      <li>جرّب: لما توصلك رسالة شراء، تنفتح ميزانيتي على بطاقة التأكيد مباشرة.</li>
-    </ol>
-    <div class="hint" style="text-align:right">الرسالة تنقرأ داخل جهازك فقط وما تنرسل لأي مكان. إذا ركّبت التطبيق على الشاشة الرئيسية، قد يفتح الرابط في سفاري — نفس البيانات ما تنتقل بين سفاري والتطبيق، فاستخدم نفس المكان دايم.</div>
-  </details>
-  <div class="privacy">🔒 بياناتك محفوظة في هذا الجهاز والمتصفح فقط، وما تنرسل لأي مكان. خذ نسخة احتياطية إذا بتغيّر الجهاز.</div>
+  <div class="privacy">🔒 بياناتك في جهازك فقط</div>
   <div id="lastBackup" class="hint" style="margin-bottom:4px"></div>
-  <button class="btn ghost" id="exportBtn">⬇️ حفظ نسخة احتياطية</button>
-  <button class="btn ghost" id="importBtn">⬆️ استرجاع نسخة احتياطية</button>
+  <button class="btn ghost" id="exportBtn">⬇️ نسخة احتياطية</button>
+  <button class="btn ghost" id="importBtn">⬆️ استرجاع نسخة</button>
   <input type="file" id="importFile" accept=".json,application/json" hidden>
   <button class="btn danger" id="clearBtn">مسح كل البيانات</button>
   <button class="btn" id="setSave">تم</button>
   <div class="ver" id="verTxt"></div>
+  <details class="help mini-help" id="autoHelp"><summary>تسجيل تلقائي (اختصارات) ؟</summary>
+    <div class="hint" style="text-align:right">⚠️ بالآيفون الرابط يفتح سفاري، وبياناته منفصلة عن التطبيق.</div>
+    <ol>
+      <li><b>الاختصارات</b> ← <b>الأتمتة</b> ← <b>+</b> ← <b>الرسائل</b>.</li>
+      <li>المرسل: البنك، الرسالة تحتوي: <b>شراء</b>.</li>
+      <li><b>ترميز عنوان URL</b> لمدخل الاختصار.</li>
+      <li><b>نص</b>: <code>https://sultaibot.github.io/budget-app/?sms=</code> + النص المرمّز.</li>
+      <li><b>فتح عناوين URL</b>، وطفّ <b>اسأل قبل التشغيل</b>.</li>
+    </ol>
+  </details>
 </div>
 
 <div class="onb" id="onb">
   <div style="font-size:54px;text-align:center">💰</div>
   <h1>كم ميزانيتك الشهرية؟</h1>
-  <p>المبلغ اللي تبي تصرفه من راتب لراتب</p>
+  <p>من راتب لراتب</p>
   <div class="amount-in"><input id="onbBudget" type="text" inputmode="decimal" placeholder="0"><span>ر.س</span></div>
-  <div class="field" style="margin-bottom:6px"><label>الراتب (اختياري)</label><input id="onbSalary" type="text" inputmode="decimal" placeholder="—"></div>
-  <p style="font-size:13px;margin:8px 0 0">الدورة تبدأ يوم 27 من كل شهر، وتقدر تغيّرها من الإعدادات.</p>
+  <div class="field" style="margin-bottom:6px"><label>الراتب</label><input id="onbSalary" type="text" inputmode="decimal" placeholder="—"></div>
+  <p style="font-size:13px;margin:8px 0 0">الدورة تبدأ يوم 27</p>
   <div class="hint err" id="onbErr"></div>
   <button class="btn" id="onbDone">ابدأ</button>
 </div>
