@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.3.0';
+var APP_VERSION='2.3.1';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -86,8 +86,14 @@ function statsFor(c){var spent=0,income=0,by={},n=0;
   S.tx.forEach(function(t){if(!inCycle(t,c))return;n++;if(t.type==='income')income+=t.amount;else{spent+=t.amount;by[t.cat]=(by[t.cat]||0)+t.amount;}});
   spent=Math.round(spent*100)/100;var budget=budgetFor(c.startISO);
   return {cycle:c,spent:spent,income:Math.round(income*100)/100,budget:budget,remaining:Math.round((budget-spent)*100)/100,byCat:by,count:n};}
-function summary(ref){ref=ref||today();var st=statsFor(cycleFor(ref,S.startDay));
-  st.daysLeft=Math.round((st.cycle.next-ref)/864e5);st.daily=st.daysLeft>0?st.remaining/st.daysLeft:st.remaining;return st;}
+/* Daily allowance model (v2.3.1): R = budget − all expenses in the cycle (today's included, live);
+   D = calendar days left INCLUDING today, counted on local dates (cycle ends at end-day 23:59 local);
+   daily = floor(R / D), 0 when over budget. So daily×D ≤ R < daily×D + D. */
+function dayNum(d){return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);}
+function allowance(R,D){D=Math.max(1,D|0);return R>0?Math.floor(Math.round(R*100)/100/D+1e-9):0;}
+function summary(ref){ref=ref||new Date();var day=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());var st=statsFor(cycleFor(day,S.startDay));
+  st.daysLeft=dayNum(st.cycle.end)-dayNum(day)+1;st.daily=allowance(st.remaining,st.daysLeft);
+  var t=iso(day),ts=0;S.tx.forEach(function(x){if(x.type!=='income'&&x.date===t)ts+=x.amount;});st.spentToday=Math.round(ts*100)/100;return st;}
 /* every cycle from the earliest transaction up to the current one, newest first */
 function history(ref){ref=ref||today();var cur=cycleFor(ref,S.startDay),out=[],first=cur.start;
   S.tx.forEach(function(t){var d=parseISO(t.date);if(d<first)first=d;});
@@ -144,13 +150,14 @@ function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(
 
 function render(){var s=summary(),c=s.cycle;
   $('cycleTxt').innerHTML=rangeHTML(c);
-  $('daysTxt').innerHTML=s.daysLeft===1?'الراتب بكرة 🎉':'باقي <span class="n">'+s.daysLeft+'</span> يوم على الراتب';
+  $('daysTxt').innerHTML=s.daysLeft===1?'الراتب بكرة 🎉':'الراتب '+fmtD(c.next);
   var r=$('remain');r.innerHTML='<span class="n">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
   var pct=s.budget?s.spent/s.budget*100:0;$('barFill').style.width=Math.min(100,pct)+'%';$('bar').className='ring-bar'+(pct>100?' over':'');
   $('spent').textContent=money(s.spent);$('budgetTap').textContent=money(s.budget)+' ر.س ✎';
-  var d=$('daily');
-  if(s.remaining<0){d.className='daily neg';d.innerHTML='تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س';}
-  else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(Math.floor(s.daily))+'</b> ر.س باليوم';}
+  var d=$('daily'),dl='<span class="n">'+s.daysLeft+'</span>',td=s.spentToday?'<small>صرفت اليوم <span class="n">'+money(s.spentToday)+'</span> ر.س</small>':'';
+  if(s.remaining<=0){d.className='daily neg';d.innerHTML=(s.remaining<0?'تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س':'خلصت الميزانية')+'<small>المتاح لكل يوم: <span class="n">0</span> ر.س • باقي '+dl+' يوم</small>'+td;}
+  else if(s.daysLeft===1){d.className='daily';d.innerHTML='تقدر تصرف اليوم <b class="n">'+money(s.daily)+'</b> ر.س<small>آخر يوم في الدورة</small>'+td;}
+  else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(s.daily)+'</b> ر.س كل يوم<small>باقي '+dl+' يوم (مع اليوم)</small>'+td;}
   $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما صرفت شي في هذي الدورة بعد</div>';
   var rows=S.tx.filter(function(t){return inCycle(t,c)&&t.type!=='income';}),inc=S.tx.filter(function(t){return inCycle(t,c)&&t.type==='income';});
   $('incWrap').style.display=inc.length?'block':'none';$('incList').innerHTML=txList(inc);
@@ -159,9 +166,13 @@ function render(){var s=summary(),c=s.cycle;
   $('list').innerHTML=rows.length?txList(rows):'<div class="empty">ابدأ بتسجيل أول مصروف 👇<br>اضغط زر <b>+</b>، اكتب المبلغ، واختر التصنيف.</div>';}
 
 /* ===== Sheets ===== */
-var openSheetEl=null;
-function openSheet(id){closeSheet();openSheetEl=$(id);$('scrim').style.display='block';openSheetEl.classList.add('open');}
-function closeSheet(){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=null;$('scrim').style.display='none';}
+var openSheetEl=null,lockY=null;
+function lockBody(){if(lockY!==null)return;lockY=window.scrollY||0;var b=document.body.style;b.position='fixed';b.top=(-lockY)+'px';b.left='0';b.right='0';b.width='100%';document.documentElement.classList.add('locked');}
+function unlockBody(){if(lockY===null)return;var y=lockY,b=document.body.style;lockY=null;b.position=b.top=b.left=b.right=b.width='';document.documentElement.classList.remove('locked');window.scrollTo(0,y);}
+function openSheet(id){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=$(id);lockBody();$('scrim').style.display='block';openSheetEl.scrollTop=0;openSheetEl.classList.add('open');}
+function closeSheet(){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=null;$('scrim').style.display='none';unlockBody();}
+/* focus without letting iOS scroll the sheet down to the field */
+function softFocus(el,sheet){try{el.focus({preventScroll:true});}catch(e){el.focus();}if(sheet){sheet.scrollTop=0;requestAnimationFrame(function(){sheet.scrollTop=0;});}}
 var add={type:'expense',editId:null,cat:null};
 function renderChips(){var list=add.type==='income'?[{name:'راتب',emoji:'💵'},{name:'دخل إضافي',emoji:'💰'},{name:'أخرى',emoji:'📦'}]:S.cats;
   $('chips').classList.toggle('compact',!!add.editId);
@@ -175,12 +186,12 @@ function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){re
     var amt=same.length>=2&&same[0].amount===same[1].amount?same[0].amount:null;
     out.push({note:t.note,cat:t.cat,amount:amt});});return out;}
 function pickRecent(i){var r=recentMerchants()[i];if(!r)return;add.quick=i;add.cat=r.cat;$('note').value=r.note;if(r.amount&&!$('amt').value)$('amt').value=r.amount;
-  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent=r.amount?'نفس المبلغ المعتاد — اضغط حفظ':'اكتب المبلغ ثم اضغط حفظ';renderChips();$('amt').focus();}
+  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent=r.amount?'نفس المبلغ المعتاد — اضغط حفظ':'اكتب المبلغ ثم اضغط حفظ';renderChips();softFocus($('amt'));}
 function openAdd(tx){add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
   $('amt').value=tx?tx.amount:'';$('note').value=tx?tx.note:'';$('date').value=tx?tx.date:iso(today());
   $('details').classList.toggle('show',!!(tx&&tx.note));$('editBtns').style.display=tx?'flex':'none';$('smsLink').style.display=tx?'none':'flex';$('addSheet').classList.toggle('editing',!!tx);
   var h=$('addHint');h.className='hint';h.textContent=tx?'عدّل وغيّر التصنيف أو اضغط حفظ':'اكتب المبلغ ثم اختر التصنيف';
-  openSheet('addSheet');$('amt').focus();}
+  openSheet('addSheet');softFocus($('amt'),$('addSheet'));}
 function commit(cat){var o={type:add.type,amount:$('amt').value,cat:cat,date:$('date').value||iso(today()),note:$('note').value.trim()};
   var snap=snapshot();
   try{if(add.editId)updateTx(add.editId,o);else{var t=addTx(o);if(t.type==='expense'&&t.note)learnFromTx(t);}}catch(e){var h=$('addHint');h.className='hint err';h.textContent='اكتب المبلغ أول';$('amt').focus();return;}
@@ -205,7 +216,7 @@ function renderSearch(){var q=$('histSearch').value,f=$('histFound');if(!q.trim(
 
 /* ===== App badge: today's allowance (opt-in) ===== */
 function updateBadge(s){try{if(!navigator.setAppBadge)return;
-  if(S.badge){var v=Math.max(0,Math.round(s.daily));(v?navigator.setAppBadge(v):navigator.clearAppBadge()).catch(function(){});}
+  if(S.badge){var v=Math.max(0,s.daily);(v?navigator.setAppBadge(v):navigator.clearAppBadge()).catch(function(){});}
   else if(navigator.clearAppBadge)navigator.clearAppBadge().catch(function(){});}catch(e){}}
 function setBadge(on){if(!on){S.badge=false;save();render();renderBadgeToggle();return;}
   var go=function(){S.badge=true;save();render();renderBadgeToggle();};
@@ -354,5 +365,5 @@ var pending=smsFromUrl();if(pending&&S.onboarded)openSms(pending);
 window.addEventListener('hashchange',function(){var t=smsFromUrl();if(t&&S.onboarded)openSms(t);});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,searchTx:searchTx,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,searchTx:searchTx,allowance:allowance,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
 })();

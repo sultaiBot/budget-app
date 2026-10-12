@@ -150,6 +150,17 @@ h3{font-size:17px;margin:28px 4px 12px}
 .saved{color:var(--acc);font-size:13px;text-align:center;opacity:0;transition:.2s;min-height:18px}.saved.show{opacity:1}
 input.bad{outline:2px solid var(--red)}
 .ver{color:var(--muted);font-size:12px;text-align:center;margin-top:14px}
+.daily small{display:block;font-size:13px;opacity:.85;margin-top:2px}
+html.locked,html.locked body{overflow:hidden}
+.sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.scrim{touch-action:none;overscroll-behavior:contain}
+#addSheet .sms-big{margin:0 0 8px 50px;width:auto;min-height:48px}
+#addSheet .recent{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;margin:0 0 8px;scrollbar-width:none;overscroll-behavior-x:contain}
+#addSheet .recent::-webkit-scrollbar{display:none}#addSheet .recent .rl{width:auto;flex:none}#addSheet .rchip{flex:none;max-width:160px}
+#addSheet .amount-in{margin:6px 0 2px}#addSheet .amount-in input{font-size:44px}
+#addSheet .chips{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+#addSheet .chip{padding:6px 2px;font-size:12px;border-radius:14px;min-height:58px;gap:2px}#addSheet .chip .e{font-size:22px}
+#addSheet .seg button{padding:5px 8px}#addSheet .amount-in input{line-height:1.1;padding:0}#addSheet .hint{min-height:16px;line-height:16px}
+#addSheet .chip{line-height:1.2;min-height:54px}#addSheet .row2{margin-top:4px}#addSheet .grab{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -176,10 +187,10 @@ input.bad{outline:2px solid var(--red)}
 <div class="sheet" id="addSheet" role="dialog">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
   <button class="sms-big" id="smsLink">📩 لصق رسالة البنك</button>
+  <div class="recent" id="recent"></div>
   <div class="seg" id="typeSeg"><button data-t="expense" class="on">مصروف</button><button data-t="income">دخل</button></div>
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
   <div class="hint" id="addHint">اكتب المبلغ ثم اختر التصنيف</div>
-  <div class="recent" id="recent"></div>
   <div class="chips" id="chips"></div>
   <button class="btn" id="quickSave" style="display:none">حفظ</button>
   <div class="row2"><button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button></div>
