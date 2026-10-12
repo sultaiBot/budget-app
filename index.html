@@ -118,6 +118,37 @@ h3{font-size:17px;margin:28px 4px 12px}
 .sms-card input,.sms-card select{background:var(--card);border:none;border-radius:10px;padding:7px 10px;font-size:15px;min-width:0;flex:1;max-width:210px;text-align:left}
 .sms-card select{text-align:right}
 .note-ok{background:var(--acc-soft);color:var(--acc);border-radius:14px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7}
+.close-x{width:44px!important;height:44px!important;left:12px!important;top:8px!important;font-size:18px!important}
+.link{min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:center}
+.budget-tap{min-height:44px;padding:0 6px}
+.cat-edit span{display:inline-flex;align-items:center;padding:0 0 0 2px;padding-right:12px}
+.cat-edit span button{min-width:44px;height:44px;margin:0;font-size:15px;border-radius:12px}
+.cat-edit span button.arm{background:var(--red-soft);color:var(--red);font-weight:700;padding:0 10px}
+.sms-big{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:16px;background:var(--acc-soft);color:var(--acc);font-weight:700;font-size:16px;margin:4px 0 12px}
+.recent{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:12px}.recent:empty{display:none}
+.recent .rl{width:100%;text-align:center;color:var(--muted);font-size:12px}
+.rchip{unicode-bidi:plaintext;min-height:44px;padding:0 14px;border-radius:22px;background:var(--bg);font-size:14px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rchip.sel{background:var(--acc-soft);outline:2px solid var(--acc)}
+.chips.compact{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.chips.compact .chip{padding:6px 2px;font-size:12px;border-radius:14px;min-height:56px;gap:2px}.chips.compact .chip .e{font-size:20px}
+.editbar{position:sticky;bottom:calc(-24px - env(safe-area-inset-bottom));background:var(--card);gap:10px;padding:10px 0 calc(14px + env(safe-area-inset-bottom));margin-top:12px;z-index:2;box-shadow:0 -8px 12px -10px var(--shadow)}
+.editbar .btn{margin:0;flex:2}.editbar .btn.danger{flex:1}
+.addSheet-editing .seg{margin-bottom:0}
+.tx.inc{opacity:.72}.tx.inc .em{background:var(--acc-soft)}.tx.inc .mid div{font-weight:500}
+.inc-h{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin:22px 6px 8px}
+.inc-card{background:transparent;box-shadow:none;border:1px dashed var(--line)}
+.toast{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#16211c;color:#fff;border-radius:16px;padding:0 8px 0 16px;min-height:48px;display:flex;align-items:center;gap:6px;font-size:15px;opacity:0;pointer-events:none;transition:.2s;z-index:30;white-space:nowrap}
+:root[data-theme=dark] .toast{background:#e8eeeb;color:#16211c}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{color:#7fe0b6;font-weight:700;min-height:44px;min-width:60px;padding:0 8px}:root[data-theme=dark] .toast button{color:#0e8a5f}
+.search{width:100%;min-height:46px;border:none;border-radius:14px;background:var(--bg);padding:0 14px;font-size:16px;margin-bottom:12px;outline:none}
+.tgl{width:52px;height:32px;border-radius:16px;background:var(--line);position:relative;flex:none;min-height:44px;background-clip:content-box;padding:6px 0}
+.tgl::after{content:'';position:absolute;top:8px;right:2px;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.2s}
+.tgl.on{background-color:var(--acc)}.tgl.on::after{right:22px}
+.help{padding:14px 0;border-bottom:1px solid var(--line)}.help summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
+.help ol{margin:6px 0 0;padding-right:20px;line-height:1.9;font-size:14px}.help code{direction:ltr;unicode-bidi:isolate;background:var(--bg);border-radius:6px;padding:1px 5px;font-size:12px;word-break:break-all}
+.saved{color:var(--acc);font-size:13px;text-align:center;opacity:0;transition:.2s;min-height:18px}.saved.show{opacity:1}
+input.bad{outline:2px solid var(--red)}
 .ver{color:var(--muted);font-size:12px;text-align:center;margin-top:14px}
 </style>
 </head>
@@ -137,21 +168,26 @@ h3{font-size:17px;margin:28px 4px 12px}
 <div class="card" id="cats"></div>
 <h3>آخر العمليات</h3>
 <div class="card" id="list" style="padding-top:2px"></div>
+<div id="incWrap" style="display:none"><div class="inc-h"><span>💵 الدخل في هذي الدورة</span><span class="n" id="incTot"></span></div><div class="card inc-card" id="incList" style="padding-top:2px"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <button class="fab" id="fab" aria-label="إضافة">+</button>
 <div class="scrim" id="scrim"></div>
 
 <div class="sheet" id="addSheet" role="dialog">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
+  <button class="sms-big" id="smsLink">📩 لصق رسالة البنك</button>
   <div class="seg" id="typeSeg"><button data-t="expense" class="on">مصروف</button><button data-t="income">دخل</button></div>
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
   <div class="hint" id="addHint">اكتب المبلغ ثم اختر التصنيف</div>
+  <div class="recent" id="recent"></div>
   <div class="chips" id="chips"></div>
-  <div class="row2"><button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button><button class="link" id="smsLink">📩 لصق رسالة البنك</button></div>
+  <button class="btn" id="quickSave" style="display:none">حفظ</button>
+  <div class="row2"><button class="link" id="detailsLink">+ تفاصيل (ملاحظة / تاريخ)</button></div>
   <div class="details" id="details">
     <div class="field"><label>ملاحظة</label><input id="note" type="text" maxlength="80" placeholder="اختياري"></div>
     <div class="field"><label>التاريخ</label><input id="date" type="date"></div>
   </div>
-  <div id="editBtns" style="display:none"><button class="btn" id="saveEdit">حفظ</button><button class="btn danger" id="delBtn">حذف العملية</button></div>
+  <div id="editBtns" class="editbar" style="display:none"><button class="btn" id="saveEdit">حفظ</button><button class="btn danger" id="delBtn">حذف</button></div>
 </div>
 
 <div class="sheet" id="smsSheet" role="dialog">
@@ -170,7 +206,8 @@ h3{font-size:17px;margin:28px 4px 12px}
 
 <div class="sheet" id="histSheet">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
-  <div id="histMain"><h2>السجل</h2><div class="card" id="histChart" style="margin-bottom:14px"></div><div id="histCmp"></div><div id="histList"></div></div>
+  <h2>السجل</h2><input class="search" id="histSearch" type="search" placeholder="🔎 ابحث بالمكان أو الملاحظة أو التصنيف" autocomplete="off"><div id="histFound"></div>
+  <div id="histMain"><div class="card" id="histChart" style="margin-bottom:14px"></div><div id="histCmp"></div><div id="histList"></div></div>
   <div id="histDetail" style="display:none"></div>
 </div>
 
@@ -190,6 +227,22 @@ h3{font-size:17px;margin:28px 4px 12px}
       <button id="addCat" style="color:var(--acc);font-weight:700">إضافة</button>
     </div>
   </div>
+  <div class="set-row" id="badgeRow" style="display:none"><span>رقم على أيقونة التطبيق<br><small style="color:var(--muted)">يعرض كم تقدر تصرف اليوم</small></span><button class="tgl" id="badgeTgl" role="switch" aria-checked="false" aria-label="رقم على أيقونة التطبيق"></button></div>
+  <div class="saved" id="setSaved">✓ انحفظ</div>
+  <details class="help" id="autoHelp"><summary>⚡ تسجيل تلقائي من رسالة البنك</summary>
+    <div class="hint" style="text-align:right;margin:4px 0 6px">خلّ الآيفون يفتح ميزانيتي برسالة الشراء جاهزة، وأنت بس تضغط «تأكيد».</div>
+    <ol>
+      <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← تبويب <b>الأتمتة</b> ← <b>+</b> ← <b>أتمتة شخصية</b>.</li>
+      <li>اختر <b>الرسائل</b> (Message).</li>
+      <li>في <b>المرسل</b> اختر اسم البنك (مثل AlRajhiBank)، وفي <b>الرسالة تحتوي</b> اكتب <b>شراء</b> (أو Purchase إذا رسائلك إنجليزي). اضغط التالي.</li>
+      <li>أضف إجراء <b>ترميز عنوان URL</b> (URL Encode) وخلّ مدخله <b>مدخل الاختصار</b> (Shortcut Input ← الرسالة/المحتوى).</li>
+      <li>أضف إجراء <b>نص</b> (Text) واكتب فيه:<br><code>https://sultaibot.github.io/budget-app/?sms=</code> ثم أضف بعده متغير <b>النص المرمّز</b> (URL Encoded Text) بدون مسافة.</li>
+      <li>أضف إجراء <b>فتح عناوين URL</b> (Open URLs) ومدخله <b>النص</b>.</li>
+      <li>اضغط التالي وطفّ <b>اسأل قبل التشغيل</b> (Ask Before Running)، ثم <b>تم</b>.</li>
+      <li>جرّب: لما توصلك رسالة شراء، تنفتح ميزانيتي على بطاقة التأكيد مباشرة.</li>
+    </ol>
+    <div class="hint" style="text-align:right">الرسالة تنقرأ داخل جهازك فقط وما تنرسل لأي مكان. إذا ركّبت التطبيق على الشاشة الرئيسية، قد يفتح الرابط في سفاري — نفس البيانات ما تنتقل بين سفاري والتطبيق، فاستخدم نفس المكان دايم.</div>
+  </details>
   <div class="privacy">🔒 بياناتك محفوظة في هذا الجهاز والمتصفح فقط، وما تنرسل لأي مكان. خذ نسخة احتياطية إذا بتغيّر الجهاز.</div>
   <div id="lastBackup" class="hint" style="margin-bottom:4px"></div>
   <button class="btn ghost" id="exportBtn">⬇️ حفظ نسخة احتياطية</button>
