@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.5.0';
+var APP_VERSION='2.5.1';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -106,11 +106,12 @@ function calDays(c,ref){ref=ref||today();var tIso=iso(ref),budget=budgetFor(c.st
     out.push({date:k,day:d.getDate(),dow:d.getDay(),spent:sp,limit:lim,state:st,today:k===tIso});before+=sp;}
   return out;}
 /* v2.5 fuel-gauge ring: frac = share of today's limit still left (1 = full at start of day); pct = % used.
-   lvl: '' <80%, 'warn' 80–100%, 'over' >100%. mood: 😌 <50, 🙂 50–<80, 😬 80–100, 🥵 over. */
+   lvl: '' <75%, 'warn' 75–100%, 'over' >100% (same thresholds as calendar heat). mood: 😌 <50, 🙂 50–<75, 😬 75–100, 🥵 over. */
 function ringState(lim,sp){var pct=lim>0?sp/lim*100:(sp>0?Infinity:0);
-  return {pct:pct,frac:pct>100?1:Math.max(0,Math.min(1,lim>0?(lim-sp)/lim:0)),lvl:pct>100?'over':pct>=80?'warn':'',mood:pct>100?'🥵':pct>=80?'😬':pct>=50?'🙂':'😌'};}
-/* calendar heat bucket: 0 no spend, 1–4 greens by % of that day's limit (≤25/50/75/100), 5 over */
-function heatLevel(sp,lim){if(!(sp>0))return 0;if(!(lim>0)||sp>lim)return 5;var r=sp/lim;return r<=.25?1:r<=.5?2:r<=.75?3:4;}
+  return {pct:pct,frac:pct>100?1:Math.max(0,Math.min(1,lim>0?(lim-sp)/lim:0)),lvl:pct>100?'over':pct>=75?'warn':'',mood:pct>100?'🥵':pct>=75?'😬':pct>=50?'🙂':'😌'};}
+/* v2.5.1 traffic-light heat by % of that day's limit: 0 none, 1 green ≤25, 2 yellow-green ≤50, 3 yellow ≤75,
+   4 amber <99.5, 5 deep orange 99.5–100 (at limit), 6 red >100 (any overspend) */
+function heatLevel(sp,lim){if(!(sp>0))return 0;if(!(lim>0))return 6;var c=Math.round(sp*100),l=Math.round(lim*100);if(c>l)return 6;var r=c/l;return r<=.25?1:r<=.5?2:r<=.75?3:r<.995?4:5;}
 /* days from ref until the next payday date (cycle.next) */
 function daysToPay(ref){ref=ref||today();var d=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());return dayNum(cycleFor(d,S.startDay).next)-dayNum(d);}
 function payTxt(n){return n<=1?'الراتب بكرة 🎉':'باقي <span class="n">'+n+'</span> يوم على الراتب';}
@@ -191,7 +192,7 @@ function render(opt){var s=summary(),c=s.cycle,prev=lastHome;
   if(out){val=-s.remaining;lbl=s.remaining<0?'تجاوزت الميزانية':'خلصت الميزانية';rs=ringState(0,sp||1);}
   else if(s.todayLeft<0){val=-s.todayLeft;lbl='تعديت حد اليوم بـ';}
   else{val=s.todayLeft;lbl='تقدر تصرف اليوم';}
-  $('daily').className='daily '+rs.lvl+(out||s.todayLeft<0?' neg':'');
+  $('daily').className='daily '+rs.lvl+(out||s.todayLeft<0?' neg':'');$('daily').dataset.l=out?6:heatLevel(sp,lim);
   $('ringFill').style.strokeDashoffset=String(RC*(1-rs.frac));
   $('mood').textContent=rs.mood;$('dl').textContent=lbl;
   $('dvN').textContent=money(val);

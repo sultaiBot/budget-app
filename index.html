@@ -193,7 +193,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
 .cd b{font-size:12px;font-weight:500;color:var(--muted)}.cd em{font-style:normal;font-size:12px;font-weight:700;min-height:15px}
 .cd.ok{background:var(--acc-soft)}.cd.ok em{color:var(--acc)}
 .cd.over{background:var(--red-soft)}.cd.over em{color:var(--red)}
-.cd.future{opacity:.45}.cd.td{outline:1.5px solid var(--acc)}.cd.sel{outline:2px solid var(--text)}
+.cd.future{opacity:1}.cd.td{outline:1.5px solid var(--acc)}.cd.sel{outline:2px solid var(--text)}
 .cday-h{display:flex;justify-content:space-between;align-items:center;margin:18px 6px 8px;font-size:15px}
 .cday-h .ok{color:var(--acc)}.cday-h .over{color:var(--red)}.cday-h .none,.cday-h .future{color:var(--muted)}
 
@@ -216,22 +216,17 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
 /* v2.5 heatmap */
 .cd{transition:transform .12s,background .3s}.cd:active{transform:scale(.9)}
 .cd[data-l="0"]{background:var(--card)}
-.cd[data-l="1"],.heat-lg [data-l="1"]{background:#dcf3e7}.cd[data-l="2"],.heat-lg [data-l="2"]{background:#ade0c5}
-.cd[data-l="3"],.heat-lg [data-l="3"]{background:#5fbf93}.cd[data-l="4"],.heat-lg [data-l="4"]{background:#1d9466}
-.cd[data-l="5"],.heat-lg [data-l="5"]{background:#e86a6a}
-.cd[data-l="1"] em,.cd[data-l="2"] em{color:#0b6b48}.cd[data-l="3"] em,.cd[data-l="4"] em,.cd[data-l="5"] em{color:#fff}.cd[data-l="3"] b,.cd[data-l="4"] b,.cd[data-l="5"] b{color:rgba(255,255,255,.85)}
-.cd[data-l="f"]{background:var(--card);opacity:.4}
+.cd[data-l="1"],.heat-lg [data-l="1"]{background:#5cc983}.cd[data-l="2"],.heat-lg [data-l="2"]{background:#b6d94c}
+.cd[data-l="3"],.heat-lg [data-l="3"]{background:#f6d03f}.cd[data-l="4"],.heat-lg [data-l="4"]{background:#f5a524}
+.cd[data-l="5"],.heat-lg [data-l="5"]{background:#ea6a12}.cd[data-l="6"],.heat-lg [data-l="6"]{background:#d42f2f}
+/* v2.5.1: solid fills, identical in light & dark (no opacity/lightness ramp that inverts on dark backgrounds); dark text on 1–5, white on red */
+.cd[data-l="1"] em,.cd[data-l="2"] em,.cd[data-l="3"] em,.cd[data-l="4"] em,.cd[data-l="5"] em,.cd[data-l="1"] b,.cd[data-l="2"] b,.cd[data-l="3"] b,.cd[data-l="4"] b,.cd[data-l="5"] b{color:#14130f}
+.cd[data-l="6"] em,.cd[data-l="6"] b{color:#fff}
+.cd[data-l="f"]{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}.cd[data-l="f"] b{color:var(--muted);opacity:.7}
 .heat-lg{display:flex;align-items:center;justify-content:center;gap:4px;margin:12px auto 0;font-size:11px;color:var(--muted)}
-.heat-lg i{width:14px;height:10px;border-radius:3px}.heat-lg span{margin:0 4px}
-:root[data-theme=dark] .cd[data-l="1"],:root[data-theme=dark] .heat-lg [data-l="1"]{background:#173a2c}:root[data-theme=dark] .cd[data-l="2"],:root[data-theme=dark] .heat-lg [data-l="2"]{background:#1d5a40}
-:root[data-theme=dark] .cd[data-l="3"],:root[data-theme=dark] .heat-lg [data-l="3"]{background:#22805a}:root[data-theme=dark] .cd[data-l="4"],:root[data-theme=dark] .heat-lg [data-l="4"]{background:#2fbf88}
-:root[data-theme=dark] .cd[data-l="5"],:root[data-theme=dark] .heat-lg [data-l="5"]{background:#b84444}
-:root[data-theme=dark] .cd[data-l="1"] em,:root[data-theme=dark] .cd[data-l="2"] em{color:#9fe3c6}:root[data-theme=dark] .cd[data-l="4"] em,:root[data-theme=dark] .cd[data-l="4"] b{color:#0f1412}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .cd[data-l="1"],:root:not([data-theme=light]) .heat-lg [data-l="1"]{background:#173a2c}:root:not([data-theme=light]) .cd[data-l="2"],:root:not([data-theme=light]) .heat-lg [data-l="2"]{background:#1d5a40}
-:root:not([data-theme=light]) .cd[data-l="3"],:root:not([data-theme=light]) .heat-lg [data-l="3"]{background:#22805a}:root:not([data-theme=light]) .cd[data-l="4"],:root:not([data-theme=light]) .heat-lg [data-l="4"]{background:#2fbf88}
-:root:not([data-theme=light]) .cd[data-l="5"],:root:not([data-theme=light]) .heat-lg [data-l="5"]{background:#b84444}
-:root:not([data-theme=light]) .cd[data-l="1"] em,:root:not([data-theme=light]) .cd[data-l="2"] em{color:#9fe3c6}:root:not([data-theme=light]) .cd[data-l="4"] em,:root:not([data-theme=light]) .cd[data-l="4"] b{color:#0f1412}
-:root:not([data-theme=light]) .daily.warn .dv{color:#f0b85a}}
+.heat-lg i{width:16px;height:10px;border-radius:3px}.heat-lg span{margin:0 4px}
+.daily[data-l="1"] .rf,.daily[data-l="2"] .rf{stroke:#3fb36b}.daily[data-l="3"] .rf{stroke:#e8c120}.daily[data-l="4"] .rf{stroke:#f5a524}.daily[data-l="5"] .rf{stroke:#ea6a12}.daily[data-l="6"] .rf{stroke:var(--red)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .daily.warn .dv{color:#f0b85a}}
 /* v2.5 number pad */
 .numpad{display:none}
 #addSheet.pad .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:4px 0 2px;direction:ltr}
@@ -273,7 +268,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="cal-top"><button class="back" id="calBack">→ رجوع</button><span class="cal-sum" id="calSum"></span></div>
   <div class="cal-nav"><button id="calPrev" aria-label="الدورة السابقة">›</button><b id="calTitle"></b><button id="calNext" aria-label="الدورة التالية">‹</button></div>
   <div class="cal-grid" id="calGrid"></div>
-  <div class="heat-lg" aria-hidden="true"><span>أقل</span><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><i data-l="5"></i><span>أكثر</span></div>
+  <div class="heat-lg" aria-hidden="true"><span>أقل</span><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><i data-l="5"></i><i data-l="6"></i><span>أكثر</span></div>
   <div id="calDay"></div>
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
