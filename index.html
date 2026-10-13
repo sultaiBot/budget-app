@@ -154,7 +154,8 @@ input.bad{outline:2px solid var(--red)}
 .daily small{display:block;font-size:13px;opacity:.85;margin-top:2px}
 html.locked,html.locked body{overflow:hidden}
 .sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.scrim{touch-action:none;overscroll-behavior:contain}
-#addSheet .sms-big{margin:0 0 8px 50px;width:auto;min-height:48px}
+#addSheet{top:calc(env(safe-area-inset-top) + 8px);max-height:none;border-radius:28px 28px 0 0}
+#addSheet .sms-big{margin:46px 0 10px;width:100%;min-height:56px;font-size:18px;border-radius:18px;background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 #addSheet .recent{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;margin:0 0 8px;scrollbar-width:none;overscroll-behavior-x:contain}
 #addSheet .recent::-webkit-scrollbar{display:none}#addSheet .recent .rl{width:auto;flex:none}#addSheet .rchip{flex:none;max-width:160px}
 #addSheet .amount-in{margin:6px 0 2px}#addSheet .amount-in input{font-size:44px}
@@ -229,8 +230,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
 
 <div class="sheet" id="addSheet" role="dialog">
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button>
-  <button class="sms-big" id="smsLink">📩 لصق رسالة البنك</button>
-  <div class="recent" id="recent"></div>
+  <button class="sms-big" id="smsLink">📋 لصق رسالة البنك</button>
   <div class="seg" id="typeSeg"><button data-t="expense" class="on">مصروف</button><button data-t="income">دخل</button></div>
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
   <div class="hint" id="addHint"></div>

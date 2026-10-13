@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.4.0';
+var APP_VERSION='2.4.1';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -190,8 +190,6 @@ function softFocus(el,sheet){try{el.focus({preventScroll:true});}catch(e){el.foc
 var add={type:'expense',editId:null,cat:null};
 function renderChips(){var list=add.type==='income'?[{name:'راتب',emoji:'💵'},{name:'دخل إضافي',emoji:'💰'},{name:'أخرى',emoji:'📦'}]:S.cats;
   $('chips').classList.toggle('compact',!!add.editId);
-  var rec=(!add.editId&&add.type==='expense')?recentMerchants():[];
-  $('recent').innerHTML=rec.length?rec.map(function(r,i){return '<button class="rchip'+(add.quick===i?' sel':'')+'" data-i="'+i+'">'+catEmoji(r.cat)+' '+esc(r.note)+'</button>';}).join(''):'';
   $('chips').innerHTML=list.map(function(c){return '<button class="chip'+((add.editId||add.quick!=null)&&add.cat===c.name?' sel':'')+'" data-cat="'+esc(c.name)+'"><span class="e">'+c.emoji+'</span>'+esc(c.name)+'</button>';}).join('');}
 function setType(t){add.type=t;[].forEach.call($('typeSeg').children,function(b){b.classList.toggle('on',b.dataset.t===t);});renderChips();}
 function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);}).forEach(function(t){
@@ -345,7 +343,6 @@ function bind(){
   $('fab').onclick=function(){openAdd(null);};$('scrim').onclick=closeSheet;
   $('typeSeg').onclick=function(e){var b=e.target.closest('button');if(b)setType(b.dataset.t);};
   $('chips').onclick=function(e){var b=e.target.closest('.chip');if(!b)return;if(add.editId||add.quick!=null){add.cat=b.dataset.cat;renderChips();}else commit(b.dataset.cat);};
-  $('recent').onclick=function(e){var b=e.target.closest('.rchip');if(b)pickRecent(+b.dataset.i);};
   $('quickSave').onclick=function(){commit(add.cat);};
   $('histSearch').oninput=renderSearch;
   $('histFound').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};
