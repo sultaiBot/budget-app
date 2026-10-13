@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.5.1';
+var APP_VERSION='2.5.2';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -187,7 +187,7 @@ function render(opt){var s=summary(),c=s.cycle,prev=lastHome;
   $('daysTxt').innerHTML=payTxt(daysToPay());
   var r=$('remain');r.innerHTML='<span class="n" id="remainN">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
   var pct=s.budget?s.spent/s.budget*100:0;$('barFill').style.width=Math.min(100,pct)+'%';$('bar').className='ring-bar'+(pct>100?' over':'');
-  $('spent').textContent=money(s.spent);$('budgetTap').textContent=money(s.budget)+' ر.س ✎';
+  $('spent').textContent=money(s.spent);$('budgetVal').textContent=money(s.budget)+' ر.س';
   var lim=s.todayLimit,sp=s.spentToday,rs=ringState(lim,sp),out=s.remaining<=0&&lim<=0,val,lbl;
   if(out){val=-s.remaining;lbl=s.remaining<0?'تجاوزت الميزانية':'خلصت الميزانية';rs=ringState(0,sp||1);}
   else if(s.todayLeft<0){val=-s.todayLeft;lbl='تعديت حد اليوم بـ';}
@@ -385,8 +385,6 @@ function bind(){
   $('saveEdit').onclick=function(){commit(add.cat);};
   $('delBtn').onclick=function(){var snap=snapshot();deleteTx(add.editId);closeSheet();render();toast('تم الحذف',snap);};
   $('list').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};
-  $('budgetTap').onclick=function(){$('budgetIn').value=summary().budget||'';openSheet('budgetSheet');$('budgetIn').focus();};
-  $('budgetSave').onclick=function(){var b=parseNum($('budgetIn').value);if(b>=0)setCurrentBudget(b);closeSheet();render();};
   $('gearBtn').onclick=openSettings;$('setSave').onclick=function(){saveSettings();closeSheet();};
   $('calBtn').onclick=openCal;$('calBack').onclick=closeCal;$('calPrev').onclick=function(){shiftCal(-1);};$('calNext').onclick=function(){shiftCal(1);};
   $('calGrid').onclick=function(e){var b=e.target.closest('.cd');if(!b)return;cal.sel=cal.sel===b.dataset.d?null:b.dataset.d;renderCal();};

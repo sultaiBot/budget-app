@@ -37,7 +37,6 @@ input,textarea,select{font:inherit;color:inherit}
 .ring-bar>div{height:100%;background:var(--acc);border-radius:6px;transition:width .4s}
 .ring-bar.over>div{background:var(--red)}
 .sub{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
-.budget-tap{color:var(--acc);font-weight:600;border-bottom:1px dashed var(--acc)}
 .daily{margin-top:14px;background:var(--acc-soft);color:var(--acc);border-radius:16px;padding:12px;font-size:15px}
 .daily b{font-size:19px}
 .daily.neg{background:var(--red-soft);color:var(--red)}
@@ -120,7 +119,6 @@ h3{font-size:17px;margin:28px 4px 12px}
 .note-ok{background:var(--acc-soft);color:var(--acc);border-radius:14px;padding:12px;margin-top:12px;font-size:14px;line-height:1.7}
 .close-x{width:44px!important;height:44px!important;left:12px!important;top:8px!important;font-size:18px!important}
 .link{min-height:44px;padding:0 10px;display:flex;align-items:center;justify-content:center}
-.budget-tap{min-height:44px;padding:0 6px}
 .cat-edit span{display:inline-flex;align-items:center;padding:0 0 0 2px;padding-right:12px}
 .cat-edit span button{min-width:44px;height:44px;margin:0;font-size:15px;border-radius:12px}
 .cat-edit span button.arm{background:var(--red-soft);color:var(--red);font-weight:700;padding:0 10px}
@@ -252,7 +250,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="lbl">باقي لك</div>
   <div class="big" id="remain"></div>
   <div class="ring-bar" id="bar"><div id="barFill"></div></div>
-  <div class="sub"><span>صرفت <b class="n" id="spent"></b></span><span>من <button class="budget-tap n" id="budgetTap"></button></span></div>
+  <div class="sub"><span>صرفت <b class="n" id="spent"></b></span><span>من <b class="n" id="budgetVal"></b></span></div>
 </section>
 <section class="daily" id="daily">
   <div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="rt" cx="60" cy="60" r="52"/><circle class="rf" id="ringFill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/></svg>
@@ -297,12 +295,6 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <textarea id="smsIn" class="sms-ta" placeholder="الصق الرسالة هنا" autocomplete="off"></textarea>
   <button class="btn ghost" id="smsPaste" style="display:none">📋 لصق</button>
   <div id="smsOut"></div>
-</div>
-
-<div class="sheet" id="budgetSheet">
-  <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>ميزانية هذي الدورة</h2>
-  <div class="amount-in"><input id="budgetIn" type="text" inputmode="decimal"><span>ر.س</span></div>
-  <button class="btn" id="budgetSave">حفظ</button>
 </div>
 
 <div class="sheet" id="histSheet">
