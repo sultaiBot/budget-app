@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.5.2';
+var APP_VERSION='2.5.3';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -70,7 +70,7 @@ function normalize(d){
 function load(){var raw=null,d=null;try{raw=localStorage.getItem(KEY);d=raw?JSON.parse(raw):null;}catch(e){
     // corrupt JSON: preserve the raw text instead of overwriting it
     if(raw)try{localStorage.setItem(KEY+'.corrupt.'+Date.now(),raw);}catch(_){}}
-  S=normalize(d);if(raw)save();}
+  S=normalize(d);var fz=raw?freezePast():false;if(raw||fz)save();}
 function save(){S.schema=Math.max(S.schema||0,SCHEMA);S.savedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(S));}
 
 /* ===== Cycles ===== */
@@ -78,10 +78,27 @@ function cycleFor(date,startDay){var y=date.getFullYear(),m=date.getMonth();if(d
   var start=new Date(y,m,startDay),next=new Date(y,m+1,startDay),end=new Date(next.getFullYear(),next.getMonth(),next.getDate()-1);
   return {start:start,end:end,next:next,startISO:iso(start),endISO:iso(end)};}
 function inCycle(t,c){return t.date>=c.startISO&&t.date<=c.endISO;}
+/* v2.5.3 per-cycle budgets: a cycle uses its own entry, else the latest entry at/before it (never a later one).
+   Only cycles older than every recorded entry fall back (earliest entry, else S.budget); after freezePast() that
+   can only happen for cycles with no transactions. */
 function budgetFor(startISO){var cb=S.cycleBudgets;if(cb[startISO]!=null)return Number(cb[startISO]);
   var keys=Object.keys(cb).sort(),best=null;keys.forEach(function(k){if(k<=startISO)best=k;});
   if(best)return Number(cb[best]);if(keys.length)return Number(cb[keys[0]]);return S.budget;}
-function setCurrentBudget(b){S.budget=b;S.cycleBudgets[cycleFor(today(),S.startDay).startISO]=b;save();}
+/* Fill missing cycleBudgets for every past cycle (oldest tx's cycle .. previous cycle) with the budget it displays now,
+   and give the current cycle the latest budget (rollover). All values computed BEFORE writing. Idempotent: only fills gaps.
+   Backs up the data once (mizaniyati.v1.backup.v2.5.3) before the first mutation. Returns true if anything changed. */
+function freezePast(){var cb=S.cycleBudgets,cur=cycleFor(today(),S.startDay),todo={},n=0;
+  if(!Object.keys(cb).length&&!(S.budget>0))return false;   // no budget ever set: nothing to freeze
+  var oldest=null;S.tx.forEach(function(t){if(t&&t.date&&(!oldest||t.date<oldest))oldest=t.date;});
+  if(oldest&&oldest<cur.startISO){var c=cycleFor(parseISO(oldest),S.startDay),guard=0;
+    while(c.startISO<cur.startISO&&guard++<600){if(cb[c.startISO]==null){todo[c.startISO]=budgetFor(c.startISO);n++;}c=cycleFor(c.next,S.startDay);}}
+  if(cb[cur.startISO]==null){todo[cur.startISO]=budgetFor(cur.startISO);n++;}
+  if(!n)return false;
+  try{var bk=KEY+'.backup.v2.5.3';if(localStorage.getItem(bk)==null)localStorage.setItem(bk,localStorage.getItem(KEY)||JSON.stringify(S));}catch(e){}
+  Object.keys(todo).forEach(function(k){cb[k]=todo[k];});
+  if(todo[cur.startISO]!=null)S.budget=todo[cur.startISO];
+  return true;}
+function setCurrentBudget(b){freezePast();S.budget=b;S.cycleBudgets[cycleFor(today(),S.startDay).startISO]=b;save();}
 function statsFor(c){var spent=0,income=0,by={},n=0;
   S.tx.forEach(function(t){if(!inCycle(t,c))return;n++;if(t.type==='income')income+=t.amount;else{spent+=t.amount;by[t.cat]=(by[t.cat]||0)+t.amount;}});
   spent=Math.round(spent*100)/100;var budget=budgetFor(c.startISO);
@@ -182,7 +199,7 @@ function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(
   return html+'</div>';}
 
 var RC=2*Math.PI*52,lastHome=null;
-function render(opt){var s=summary(),c=s.cycle,prev=lastHome;
+function render(opt){if(freezePast())save();var s=summary(),c=s.cycle,prev=lastHome;
   $('cycleTxt').innerHTML=rangeHTML(c);
   $('daysTxt').innerHTML=payTxt(daysToPay());
   var r=$('remain');r.innerHTML='<span class="n" id="remainN">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
@@ -433,5 +450,5 @@ var pending=smsFromUrl();if(pending&&S.onboarded)openSms(pending);
 window.addEventListener('hashchange',function(){var t=smsFromUrl();if(t&&S.onboarded)openSms(t);});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,freezePast:freezePast,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
 })();
