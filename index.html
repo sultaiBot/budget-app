@@ -176,9 +176,6 @@ html.locked,html.locked body{overflow:hidden}
 .daily .dv{font-size:34px;font-weight:800;line-height:1.15;margin-top:2px;color:var(--acc)}.daily .dv .cur{font-size:15px;font-weight:600;color:var(--muted);margin-right:4px}
 .daily.neg{background:var(--card);color:var(--text)}.daily.neg .dv{color:var(--red)}
 .daily small{color:var(--muted);opacity:1;font-size:12px;margin-top:6px}
-.tbar{height:4px;border-radius:3px;background:var(--line);overflow:hidden;margin:10px 0 5px}
-.tbar>div{height:100%;border-radius:3px;background:var(--acc);opacity:.75;transition:width .4s,background .3s}
-.tbar.warn>div{background:#e5a23a}.tbar.over>div{background:var(--red)}
 .tfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}.tlbl{font-size:12px;color:var(--muted)}.tfoot small{margin:0!important}
 #calDay .day{display:none}
 h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
@@ -199,6 +196,56 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
 .cd.future{opacity:.45}.cd.td{outline:1.5px solid var(--acc)}.cd.sel{outline:2px solid var(--text)}
 .cday-h{display:flex;justify-content:space-between;align-items:center;margin:18px 6px 8px;font-size:15px}
 .cday-h .ok{color:var(--acc)}.cday-h .over{color:var(--red)}.cday-h .none,.cday-h .future{color:var(--muted)}
+
+/* v2.5 fuel-gauge ring */
+.daily{display:flex;align-items:center;gap:16px;padding:14px 18px}
+.ring{position:relative;width:132px;height:132px;flex:none}
+.ring svg{width:100%;height:100%;display:block}
+.ring circle{fill:none;stroke-width:9;stroke-linecap:round}
+.ring .rt{stroke:var(--line)}
+.ring .rf{stroke:var(--acc);stroke-dasharray:326.73;stroke-dashoffset:0;transition:stroke-dashoffset .8s cubic-bezier(.22,1,.36,1),stroke .4s}
+.daily.warn .rf{stroke:#e5a23a}.daily.over .rf,.daily.neg .rf{stroke:var(--red)}
+.daily.over .ring svg{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.daily.over .ring svg{animation:none}.ring .rf{transition:none}}
+.rin{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.mood{font-size:17px;line-height:1;margin-bottom:2px}
+.daily .dv{font-size:27px;margin:0;display:flex;flex-direction:column;align-items:center;line-height:1.1}.daily .dv .cur{font-size:11px;margin:0}
+.daily.warn .dv{color:#c98410}:root[data-theme=dark] .daily.warn .dv{color:#f0b85a}
+.dtx{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.dtx .dl{font-size:15px;color:var(--text);font-weight:600}.dtx .tlbl{font-size:13px}
+/* v2.5 heatmap */
+.cd{transition:transform .12s,background .3s}.cd:active{transform:scale(.9)}
+.cd[data-l="0"]{background:var(--card)}
+.cd[data-l="1"],.heat-lg [data-l="1"]{background:#dcf3e7}.cd[data-l="2"],.heat-lg [data-l="2"]{background:#ade0c5}
+.cd[data-l="3"],.heat-lg [data-l="3"]{background:#5fbf93}.cd[data-l="4"],.heat-lg [data-l="4"]{background:#1d9466}
+.cd[data-l="5"],.heat-lg [data-l="5"]{background:#e86a6a}
+.cd[data-l="1"] em,.cd[data-l="2"] em{color:#0b6b48}.cd[data-l="3"] em,.cd[data-l="4"] em,.cd[data-l="5"] em{color:#fff}.cd[data-l="3"] b,.cd[data-l="4"] b,.cd[data-l="5"] b{color:rgba(255,255,255,.85)}
+.cd[data-l="f"]{background:var(--card);opacity:.4}
+.heat-lg{display:flex;align-items:center;justify-content:center;gap:4px;margin:12px auto 0;font-size:11px;color:var(--muted)}
+.heat-lg i{width:14px;height:10px;border-radius:3px}.heat-lg span{margin:0 4px}
+:root[data-theme=dark] .cd[data-l="1"],:root[data-theme=dark] .heat-lg [data-l="1"]{background:#173a2c}:root[data-theme=dark] .cd[data-l="2"],:root[data-theme=dark] .heat-lg [data-l="2"]{background:#1d5a40}
+:root[data-theme=dark] .cd[data-l="3"],:root[data-theme=dark] .heat-lg [data-l="3"]{background:#22805a}:root[data-theme=dark] .cd[data-l="4"],:root[data-theme=dark] .heat-lg [data-l="4"]{background:#2fbf88}
+:root[data-theme=dark] .cd[data-l="5"],:root[data-theme=dark] .heat-lg [data-l="5"]{background:#b84444}
+:root[data-theme=dark] .cd[data-l="1"] em,:root[data-theme=dark] .cd[data-l="2"] em{color:#9fe3c6}:root[data-theme=dark] .cd[data-l="4"] em,:root[data-theme=dark] .cd[data-l="4"] b{color:#0f1412}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .cd[data-l="1"],:root:not([data-theme=light]) .heat-lg [data-l="1"]{background:#173a2c}:root:not([data-theme=light]) .cd[data-l="2"],:root:not([data-theme=light]) .heat-lg [data-l="2"]{background:#1d5a40}
+:root:not([data-theme=light]) .cd[data-l="3"],:root:not([data-theme=light]) .heat-lg [data-l="3"]{background:#22805a}:root:not([data-theme=light]) .cd[data-l="4"],:root:not([data-theme=light]) .heat-lg [data-l="4"]{background:#2fbf88}
+:root:not([data-theme=light]) .cd[data-l="5"],:root:not([data-theme=light]) .heat-lg [data-l="5"]{background:#b84444}
+:root:not([data-theme=light]) .cd[data-l="1"] em,:root:not([data-theme=light]) .cd[data-l="2"] em{color:#9fe3c6}:root:not([data-theme=light]) .cd[data-l="4"] em,:root:not([data-theme=light]) .cd[data-l="4"] b{color:#0f1412}
+:root:not([data-theme=light]) .daily.warn .dv{color:#f0b85a}}
+/* v2.5 number pad */
+.numpad{display:none}
+#addSheet.pad .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:4px 0 2px;direction:ltr}
+.numpad button{height:clamp(42px,6.6vh,56px);border-radius:16px;background:var(--bg);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;transition:transform .08s,background .15s;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.numpad button:active{transform:scale(.92);background:var(--acc-soft);color:var(--acc)}
+.numpad [data-k=del]{font-size:20px;color:var(--muted)}
+#addSheet.pad .amount-in input{caret-color:transparent}
+.amount-in.bump{animation:bump .18s ease-out}@keyframes bump{40%{transform:scale(1.06)}}
+#addSheet.pad .sms-big{margin-top:44px;min-height:52px;margin-bottom:8px}
+#addSheet.pad .amount-in{margin:2px 0 0}#addSheet.pad .amount-in input{font-size:40px}
+#addSheet.pad .chips{grid-template-columns:repeat(5,1fr);gap:5px;margin-top:6px}
+#addSheet.pad .chip{min-height:50px;padding:4px 1px;font-size:11px}#addSheet.pad .chip .e{font-size:20px}
+#addSheet.pad .row2{margin-top:0}#addSheet.pad .row2 .link{min-height:44px}
+#addSheet.pad.editing .numpad button{height:clamp(38px,5.6vh,50px)}
 </style>
 </head>
 <body>
@@ -212,7 +259,11 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="ring-bar" id="bar"><div id="barFill"></div></div>
   <div class="sub"><span>صرفت <b class="n" id="spent"></b></span><span>من <button class="budget-tap n" id="budgetTap"></button></span></div>
 </section>
-<section class="daily" id="daily"></section>
+<section class="daily" id="daily">
+  <div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="rt" cx="60" cy="60" r="52"/><circle class="rf" id="ringFill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/></svg>
+    <div class="rin"><span class="mood" id="mood"></span><div class="dv"><span class="n" id="dvN"></span><span class="cur">ر.س</span></div></div></div>
+  <div class="dtx"><div class="dl" id="dl"></div><span class="tlbl" id="todayLbl"></span></div>
+</section>
 <h3>وين راحت فلوسك</h3>
 <div class="card" id="cats"></div>
 <h3>آخر العمليات</h3>
@@ -222,6 +273,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="cal-top"><button class="back" id="calBack">→ رجوع</button><span class="cal-sum" id="calSum"></span></div>
   <div class="cal-nav"><button id="calPrev" aria-label="الدورة السابقة">›</button><b id="calTitle"></b><button id="calNext" aria-label="الدورة التالية">‹</button></div>
   <div class="cal-grid" id="calGrid"></div>
+  <div class="heat-lg" aria-hidden="true"><span>أقل</span><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><i data-l="5"></i><span>أكثر</span></div>
   <div id="calDay"></div>
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -234,6 +286,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="seg" id="typeSeg"><button data-t="expense" class="on">مصروف</button><button data-t="income">دخل</button></div>
   <div class="amount-in"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span>ر.س</span></div>
   <div class="hint" id="addHint"></div>
+  <div class="numpad" id="numpad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del" aria-label="مسح">⌫</button></div>
   <div class="chips" id="chips"></div>
   <button class="btn" id="quickSave" style="display:none">حفظ</button>
   <div class="row2"><button class="link" id="detailsLink">+ ملاحظة / تاريخ</button></div>
@@ -268,6 +321,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="grab"></div><button class="close-x" data-close aria-label="إغلاق">✕</button><h2>الإعدادات</h2>
   <div id="backupRemind"></div>
   <div class="set-row"><span>المظهر</span><div class="seg" id="themeSeg" style="margin:0;width:190px"><button data-v="auto">تلقائي</button><button data-v="light">فاتح</button><button data-v="dark">داكن</button></div></div>
+  <div class="set-row"><span>لوحة الأرقام</span><div class="seg" id="padSeg" style="margin:0;width:160px"><button data-v="app">التطبيق</button><button data-v="system">الجوال</button></div></div>
   <div class="set-row"><span>يوم الراتب</span><input id="sDay" type="number" min="1" max="28" inputmode="numeric"></div>
   <div class="set-row"><span>ميزانية الدورة</span><input id="sBudget" type="text" inputmode="decimal"></div>
   <div class="set-row"><span>الراتب</span><input id="sSalary" type="text" inputmode="decimal" placeholder="—"></div>

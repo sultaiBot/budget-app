@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.4.1';
+var APP_VERSION='2.5.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -65,7 +65,7 @@ function normalize(d){
   d.cats=Array.isArray(d.cats)&&d.cats.length?d.cats:DEF_CATS.map(function(c){return {name:c[0],emoji:c[1]};});
   d.startDay=Math.min(28,Math.max(1,parseInt(d.startDay,10)||27));d.budget=Number(d.budget)||0;d.salary=Number(d.salary)||0;
   d.cycleBudgets=d.cycleBudgets&&typeof d.cycleBudgets==='object'?d.cycleBudgets:{};
-  d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};if(['auto','light','dark'].indexOf(d.theme)<0)d.theme='auto';
+  d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};if(['auto','light','dark'].indexOf(d.theme)<0)d.theme='auto';if(d.numpad!=='system')d.numpad='app';
   if(!d.schema)d.schema=SCHEMA;return d;}
 function load(){var raw=null,d=null;try{raw=localStorage.getItem(KEY);d=raw?JSON.parse(raw):null;}catch(e){
     // corrupt JSON: preserve the raw text instead of overwriting it
@@ -105,6 +105,27 @@ function calDays(c,ref){ref=ref||today();var tIso=iso(ref),budget=budgetFor(c.st
     var lim=allowance(Math.round((budget-before)*100)/100,total-i),st=k>tIso?'future':!sp?'none':sp>lim?'over':'ok';
     out.push({date:k,day:d.getDate(),dow:d.getDay(),spent:sp,limit:lim,state:st,today:k===tIso});before+=sp;}
   return out;}
+/* v2.5 fuel-gauge ring: frac = share of today's limit still left (1 = full at start of day); pct = % used.
+   lvl: '' <80%, 'warn' 80–100%, 'over' >100%. mood: 😌 <50, 🙂 50–<80, 😬 80–100, 🥵 over. */
+function ringState(lim,sp){var pct=lim>0?sp/lim*100:(sp>0?Infinity:0);
+  return {pct:pct,frac:pct>100?1:Math.max(0,Math.min(1,lim>0?(lim-sp)/lim:0)),lvl:pct>100?'over':pct>=80?'warn':'',mood:pct>100?'🥵':pct>=80?'😬':pct>=50?'🙂':'😌'};}
+/* calendar heat bucket: 0 no spend, 1–4 greens by % of that day's limit (≤25/50/75/100), 5 over */
+function heatLevel(sp,lim){if(!(sp>0))return 0;if(!(lim>0)||sp>lim)return 5;var r=sp/lim;return r<=.25?1:r<=.5?2:r<=.75?3:4;}
+/* days from ref until the next payday date (cycle.next) */
+function daysToPay(ref){ref=ref||today();var d=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());return dayNum(cycleFor(d,S.startDay).next)-dayNum(d);}
+function payTxt(n){return n<=1?'الراتب بكرة 🎉':'باقي <span class="n">'+n+'</span> يوم على الراتب';}
+/* numpad entry: returns new amount string */
+function padKey(cur,k){cur=String(cur||'');
+  if(k==='del')return cur.slice(0,-1);
+  if(k==='.'){if(cur.indexOf('.')>=0)return cur;return (cur||'0')+'.';}
+  if(!/^[0-9]$/.test(k))return cur;
+  var i=cur.indexOf('.');if(i>=0){return cur.length-i>2?cur:cur+k;}
+  if(cur==='0')return k;if(cur.length>=7)return cur;return cur+k;}
+/* animated number tween (count down/up) */
+function tween(el,from,to,fmt){if(!el)return;var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce||from===to||!isFinite(from)){el.textContent=fmt(to);return;}var t0=null,D=650;cancelAnimationFrame(el._tw);
+  var step=function(t){if(t0===null)t0=t;var k=Math.min(1,(t-t0)/D),e=1-Math.pow(1-k,3);el.textContent=fmt(k<1?Math.round(from+(to-from)*e):to);if(k<1)el._tw=requestAnimationFrame(step);};
+  el.textContent=fmt(from);el._tw=requestAnimationFrame(step);}
 /* every cycle from the earliest transaction up to the current one, newest first */
 function history(ref){ref=ref||today();var cur=cycleFor(ref,S.startDay),out=[],first=cur.start;
   S.tx.forEach(function(t){var d=parseISO(t.date);if(d<first)first=d;});
@@ -159,19 +180,24 @@ function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(
     html+='<button class="tx'+(t.type==='income'?' inc':'')+'" data-id="'+t.id+'"><span class="em">'+catEmoji(t.cat)+'</span><span class="mid"><div>'+esc(t.cat)+'</div>'+(t.note?'<small>'+esc(t.note)+'</small>':'')+'</span><span class="amt n'+(t.type==='income'?' in">+':'">-')+money(t.amount)+'</span></button>';});
   return html+'</div>';}
 
-function render(){var s=summary(),c=s.cycle;
+var RC=2*Math.PI*52,lastHome=null;
+function render(opt){var s=summary(),c=s.cycle,prev=lastHome;
   $('cycleTxt').innerHTML=rangeHTML(c);
-  $('daysTxt').innerHTML=s.daysLeft===1?'الراتب بكرة 🎉':'الراتب '+fmtD(c.next);
-  var r=$('remain');r.innerHTML='<span class="n">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
+  $('daysTxt').innerHTML=payTxt(daysToPay());
+  var r=$('remain');r.innerHTML='<span class="n" id="remainN">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
   var pct=s.budget?s.spent/s.budget*100:0;$('barFill').style.width=Math.min(100,pct)+'%';$('bar').className='ring-bar'+(pct>100?' over':'');
   $('spent').textContent=money(s.spent);$('budgetTap').textContent=money(s.budget)+' ر.س ✎';
-  var d=$('daily'),dl='<span class="n">'+s.daysLeft+'</span>';
-  var lim=s.todayLimit,sp=s.spentToday,p2=lim>0?sp/lim*100:(sp>0?101:0),lvl=p2>100?'over':p2>=80?'warn':'';
-  var bar='<div class="tbar '+lvl+'" id="todayBar"><div style="width:'+Math.min(100,p2)+'%"></div></div><div class="tfoot"><span class="tlbl" id="todayLbl">صرفت <span class="n">'+money(sp)+'</span> من <span class="n">'+money(lim)+'</span></span>';
-  var foot='<small>'+(s.daysLeft===1?'آخر يوم في الدورة':'باقي '+dl+' يوم')+'</small></div>';
-  if(s.remaining<=0&&lim<=0){d.className='daily neg';d.innerHTML='<div class="dl">'+(s.remaining<0?'تجاوزت الميزانية':'خلصت الميزانية')+'</div><div class="dv"><span class="n">'+money(-s.remaining)+'</span><span class="cur">ر.س</span></div>'+(sp?bar:'<div class="tfoot">')+foot;}
-  else if(s.todayLeft<0){d.className='daily neg';d.innerHTML='<div class="dl">تعديت حد اليوم بـ</div><div class="dv"><span class="n">'+money(-s.todayLeft)+'</span><span class="cur">ر.س</span></div>'+bar+foot;}
-  else{d.className='daily';d.innerHTML='<div class="dl">تقدر تصرف اليوم</div><div class="dv"><span class="n">'+money(s.todayLeft)+'</span><span class="cur">ر.س</span></div>'+bar+foot;}
+  var lim=s.todayLimit,sp=s.spentToday,rs=ringState(lim,sp),out=s.remaining<=0&&lim<=0,val,lbl;
+  if(out){val=-s.remaining;lbl=s.remaining<0?'تجاوزت الميزانية':'خلصت الميزانية';rs=ringState(0,sp||1);}
+  else if(s.todayLeft<0){val=-s.todayLeft;lbl='تعديت حد اليوم بـ';}
+  else{val=s.todayLeft;lbl='تقدر تصرف اليوم';}
+  $('daily').className='daily '+rs.lvl+(out||s.todayLeft<0?' neg':'');
+  $('ringFill').style.strokeDashoffset=String(RC*(1-rs.frac));
+  $('mood').textContent=rs.mood;$('dl').textContent=lbl;
+  $('dvN').textContent=money(val);
+  $('todayLbl').innerHTML='صرفت <span class="n">'+money(sp)+'</span> من <span class="n">'+money(lim)+'</span>';
+  lastHome={rem:s.remaining,val:val};
+  if(opt&&opt.anim&&prev){tween($('remainN'),prev.rem,s.remaining,money);tween($('dvN'),prev.val,val,money);}
   $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما فيه مصروف للحين</div>';
   var rows=S.tx.filter(function(t){return inCycle(t,c)&&t.type!=='income';}),inc=S.tx.filter(function(t){return inCycle(t,c)&&t.type==='income';});
   $('incWrap').style.display=inc.length?'block':'none';$('incList').innerHTML=txList(inc);
@@ -199,15 +225,20 @@ function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){re
     out.push({note:t.note,cat:t.cat,amount:amt});});return out;}
 function pickRecent(i){var r=recentMerchants()[i];if(!r)return;add.quick=i;add.cat=r.cat;$('note').value=r.note;if(r.amount&&!$('amt').value)$('amt').value=r.amount;
   $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent='';renderChips();softFocus($('amt'));}
-function openAdd(tx){add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
+function padMode(){return S.numpad!=='system';}
+function applyPad(){var on=padMode(),i=$('amt');$('addSheet').classList.toggle('pad',on);i.setAttribute('inputmode',on?'none':'decimal');
+  var seg=$('padSeg');if(seg)[].forEach.call(seg.children,function(b){b.classList.toggle('on',b.dataset.v===(on?'app':'system'));});}
+function pressPad(k){var i=$('amt'),v=padKey(i.value,k);if(v!==i.value){i.value=v;var w=i.parentNode;w.classList.remove('bump');void w.offsetWidth;w.classList.add('bump');}
+  var h=$('addHint');if(h.classList.contains('err')){h.className='hint';h.textContent='';}}
+function openAdd(tx){applyPad();add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
   $('amt').value=tx?tx.amount:'';$('note').value=tx?tx.note:'';$('date').value=tx?tx.date:iso(today());
   $('details').classList.toggle('show',!!(tx&&tx.note));$('editBtns').style.display=tx?'flex':'none';$('smsLink').style.display=tx?'none':'flex';$('addSheet').classList.toggle('editing',!!tx);
   var h=$('addHint');h.className='hint';h.textContent='';
   openSheet('addSheet');softFocus($('amt'),$('addSheet'));}
 function commit(cat){var o={type:add.type,amount:$('amt').value,cat:cat,date:$('date').value||iso(today()),note:$('note').value.trim()};
   var snap=snapshot();
-  try{if(add.editId)updateTx(add.editId,o);else{var t=addTx(o);if(t.type==='expense'&&t.note)learnFromTx(t);}}catch(e){var h=$('addHint');h.className='hint err';h.textContent='اكتب المبلغ أول';$('amt').focus();return;}
-  closeSheet();render();toast('تم الحفظ',snap);}
+  try{if(add.editId)updateTx(add.editId,o);else{var t=addTx(o);if(t.type==='expense'&&t.note)learnFromTx(t);}}catch(e){var h=$('addHint');h.className='hint err';h.textContent='اكتب المبلغ أول';softFocus($('amt'));return;}
+  closeSheet();render({anim:true});toast('تم الحفظ',snap);}
 
 /* ===== Undo toast (replaces confirm) ===== */
 function snapshot(){return JSON.stringify({tx:S.tx,mc:S.merchantCats,cats:S.cats});}
@@ -271,7 +302,7 @@ function renderCal(){var c=cal.c,days=calDays(c),cur=cycleFor(today(),S.startDay
   $('calTitle').innerHTML=rangeHTML(c);$('calNext').disabled=c.startISO===cur.startISO;
   $('calSum').innerHTML='صرفت <span class="n">'+money(st.spent)+'</span> من <span class="n">'+money(st.budget)+'</span>';
   var h=WD.map(function(w){return '<i>'+w+'</i>';}).join('');for(var i=0;i<days[0].dow;i++)h+='<span></span>';
-  h+=days.map(function(x){return '<button class="cd '+x.state+(x.today?' td':'')+(cal.sel===x.date?' sel':'')+'" data-d="'+x.date+'"><b class="n">'+x.day+'</b><em class="n">'+(x.spent?(x.spent>=1000?(Math.round(x.spent/100)/10)+'k':Math.round(x.spent)):'')+'</em></button>';}).join('');
+  h+=days.map(function(x){return '<button class="cd '+x.state+(x.today?' td':'')+(cal.sel===x.date?' sel':'')+'" data-d="'+x.date+'" data-l="'+(x.state==='future'?'f':heatLevel(x.spent,x.limit))+'"><b class="n">'+x.day+'</b><em class="n">'+(x.spent?(x.spent>=1000?(Math.round(x.spent/100)/10)+'k':Math.round(x.spent)):'')+'</em></button>';}).join('');
   $('calGrid').innerHTML=h;
   var sd=cal.sel&&days.find(function(x){return x.date===cal.sel;});
   if(!sd){$('calDay').innerHTML='';return;}
@@ -310,7 +341,7 @@ function confirmSms(){var r=sms.r||{},cat=$('smsCat').value,note=$('smsNote').va
   try{addTx({type:'expense',amount:$('smsAmt').value,cat:cat,date:d,note:note||r.merchant,time:r.time||null,mkey:mkey,fp:fp});}catch(e){$('smsAmt').focus();return;}
   learnKeys(mkey,fp,cat);
   if(note&&r.mkey&&SmsParse.normMerchant(note)!==r.mkey)learnKeys(SmsParse.normMerchant(note),'',cat);
-  closeSheet();render();toast('تم الحفظ',snap);}
+  closeSheet();render({anim:true});toast('تم الحفظ',snap);}
 /* learning: on EVERY save with a category (new SMS entry, quick add with a note, or later edit) */
 function learnKeys(mkey,fp,cat){if(SmsParse.learn(S.merchantCats,mkey,fp,cat))save();}
 function learnFromTx(t){if(!t||t.type!=='expense'||!t.cat)return;
@@ -323,7 +354,7 @@ function openSettings(){$('sDay').value=S.startDay;$('sBudget').value=summary().
   var ds=daysSince(S.lastBackup);
   $('backupRemind').innerHTML=(S.tx.length&&ds>=30)?'<div class="remind">💡 '+(S.lastBackup?'آخر نسخة قبل <span class="n">'+ds+'</span> يوم':'ما عندك نسخة احتياطية')+'</div>':'';
   $('lastBackup').innerHTML=S.lastBackup?'آخر نسخة: <span class="n">'+S.lastBackup.slice(0,10)+'</span>':'';
-  renderBadgeToggle();$('badgeRow').style.display=('setAppBadge' in navigator)?'flex':'none';applyTheme();$('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
+  applyPad();renderBadgeToggle();$('badgeRow').style.display=('setAppBadge' in navigator)?'flex':'none';applyTheme();$('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
 function renderCatEdit(){$('catEdit').innerHTML=S.cats.map(function(c,i){return '<span>'+c.emoji+' '+esc(c.name)+'<button data-i="'+i+'" aria-label="حذف '+esc(c.name)+'">✕</button></span>';}).join('');}
 function saveSettings(){var d=parseInt($('sDay').value,10);if(d>=1&&d<=28)S.startDay=d;var b=parseNum($('sBudget').value);if(b>=0&&$('sBudget').value.trim()!=='')setCurrentBudget(b);
   var sl=parseNum($('sSalary').value);S.salary=sl>0?sl:0;save();render();var f=$('setSaved');f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show');},1500);}
@@ -370,6 +401,9 @@ function bind(){
   $('addCat').onclick=function(){var n=$('newCat').value.trim();if(!n||S.cats.some(function(c){return c.name===n;}))return;
     S.cats.push({name:n,emoji:$('newEmoji').value.trim()||'🏷️'});save();$('newCat').value='';$('newEmoji').value='';renderCatEdit();};
   $('exportBtn').onclick=exportBackup;
+  $('padSeg').onclick=function(e){var b=e.target.closest('button');if(!b)return;S.numpad=b.dataset.v;save();applyPad();};
+  $('numpad').addEventListener('click',function(e){var b=e.target.closest('button');if(b)pressPad(b.dataset.k);});
+  $('numpad').addEventListener('pointerdown',function(e){e.preventDefault();});
   $('themeSeg').onclick=function(e){var b=e.target.closest('button');if(!b)return;S.theme=b.dataset.v;save();applyTheme();};
   if(window.matchMedia){var mq=matchMedia('(prefers-color-scheme: dark)');(mq.addEventListener?mq.addEventListener.bind(mq,'change'):mq.addListener.bind(mq))(applyTheme);}
   $('smsLink').onclick=openSms;
@@ -400,5 +434,5 @@ var pending=smsFromUrl();if(pending&&S.onboarded)openSms(pending);
 window.addEventListener('hashchange',function(){var t=smsFromUrl();if(t&&S.onboarded)openSms(t);});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
 })();
