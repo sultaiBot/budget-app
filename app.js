@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.3.2';
+var APP_VERSION='2.4.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -93,7 +93,18 @@ function dayNum(d){return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.get
 function allowance(R,D){D=Math.max(1,D|0);return R>0?Math.floor(Math.round(R*100)/100/D+1e-9):0;}
 function summary(ref){ref=ref||new Date();var day=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());var st=statsFor(cycleFor(day,S.startDay));
   st.daysLeft=dayNum(st.cycle.end)-dayNum(day)+1;st.daily=allowance(st.remaining,st.daysLeft);
-  var t=iso(day),ts=0;S.tx.forEach(function(x){if(x.type!=='income'&&x.date===t)ts+=x.amount;});st.spentToday=Math.round(ts*100)/100;return st;}
+  var t=iso(day),ts=0;S.tx.forEach(function(x){if(x.type!=='income'&&x.date===t)ts+=x.amount;});st.spentToday=Math.round(ts*100)/100;
+  /* v2.4 today limit: allowance as it stood at the START of today (R before today's spending ÷ D), fixed for the whole day.
+     todayLeft = todayLimit − spentToday (can go negative = over today's limit). Tomorrow the limit is recomputed from what's left. */
+  st.todayLimit=allowance(Math.round((st.remaining+st.spentToday)*100)/100,st.daysLeft);st.todayLeft=Math.round((st.todayLimit-st.spentToday)*100)/100;return st;}
+/* per-day totals + limits for one cycle (spending calendar). limit(d) = floor((budget − spent before d) / days left from d) */
+function calDays(c,ref){ref=ref||today();var tIso=iso(ref),budget=budgetFor(c.startISO),by={},out=[],before=0;
+  S.tx.forEach(function(t){if(t.type!=='income'&&inCycle(t,c))by[t.date]=(by[t.date]||0)+t.amount;});
+  var total=dayNum(c.end)-dayNum(c.start)+1;
+  for(var i=0;i<total;i++){var d=new Date(c.start.getFullYear(),c.start.getMonth(),c.start.getDate()+i),k=iso(d),sp=Math.round((by[k]||0)*100)/100;
+    var lim=allowance(Math.round((budget-before)*100)/100,total-i),st=k>tIso?'future':!sp?'none':sp>lim?'over':'ok';
+    out.push({date:k,day:d.getDate(),dow:d.getDay(),spent:sp,limit:lim,state:st,today:k===tIso});before+=sp;}
+  return out;}
 /* every cycle from the earliest transaction up to the current one, newest first */
 function history(ref){ref=ref||today();var cur=cycleFor(ref,S.startDay),out=[],first=cur.start;
   S.tx.forEach(function(t){var d=parseISO(t.date);if(d<first)first=d;});
@@ -154,10 +165,13 @@ function render(){var s=summary(),c=s.cycle;
   var r=$('remain');r.innerHTML='<span class="n">'+money(s.remaining)+'</span><span class="cur">ر.س</span>';r.className='big'+(s.remaining<0?' neg':'');
   var pct=s.budget?s.spent/s.budget*100:0;$('barFill').style.width=Math.min(100,pct)+'%';$('bar').className='ring-bar'+(pct>100?' over':'');
   $('spent').textContent=money(s.spent);$('budgetTap').textContent=money(s.budget)+' ر.س ✎';
-  var d=$('daily'),dl='<span class="n">'+s.daysLeft+'</span>',td=s.spentToday?'<small>صرفت اليوم <span class="n">'+money(s.spentToday)+'</span> ر.س</small>':'';
-  if(s.remaining<=0){d.className='daily neg';d.innerHTML=(s.remaining<0?'تجاوزت الميزانية بـ <b class="n">'+money(-s.remaining)+'</b> ر.س':'خلصت الميزانية')+'<small>لكل يوم <span class="n">0</span> • باقي '+dl+' يوم</small>'+td;}
-  else if(s.daysLeft===1){d.className='daily';d.innerHTML='تقدر تصرف اليوم <b class="n">'+money(s.daily)+'</b> ر.س<small>آخر يوم في الدورة</small>'+td;}
-  else{d.className='daily';d.innerHTML='تقدر تصرف <b class="n">'+money(s.daily)+'</b> ر.س كل يوم<small>باقي '+dl+' يوم</small>'+td;}
+  var d=$('daily'),dl='<span class="n">'+s.daysLeft+'</span>';
+  var lim=s.todayLimit,sp=s.spentToday,p2=lim>0?sp/lim*100:(sp>0?101:0),lvl=p2>100?'over':p2>=80?'warn':'';
+  var bar='<div class="tbar '+lvl+'" id="todayBar"><div style="width:'+Math.min(100,p2)+'%"></div></div><div class="tfoot"><span class="tlbl" id="todayLbl">صرفت <span class="n">'+money(sp)+'</span> من <span class="n">'+money(lim)+'</span></span>';
+  var foot='<small>'+(s.daysLeft===1?'آخر يوم في الدورة':'باقي '+dl+' يوم')+'</small></div>';
+  if(s.remaining<=0&&lim<=0){d.className='daily neg';d.innerHTML='<div class="dl">'+(s.remaining<0?'تجاوزت الميزانية':'خلصت الميزانية')+'</div><div class="dv"><span class="n">'+money(-s.remaining)+'</span><span class="cur">ر.س</span></div>'+(sp?bar:'<div class="tfoot">')+foot;}
+  else if(s.todayLeft<0){d.className='daily neg';d.innerHTML='<div class="dl">تعديت حد اليوم بـ</div><div class="dv"><span class="n">'+money(-s.todayLeft)+'</span><span class="cur">ر.س</span></div>'+bar+foot;}
+  else{d.className='daily';d.innerHTML='<div class="dl">تقدر تصرف اليوم</div><div class="dv"><span class="n">'+money(s.todayLeft)+'</span><span class="cur">ر.س</span></div>'+bar+foot;}
   $('cats').innerHTML=s.spent?donutHTML(s.byCat):'<div class="empty" style="padding:8px">ما فيه مصروف للحين</div>';
   var rows=S.tx.filter(function(t){return inCycle(t,c)&&t.type!=='income';}),inc=S.tx.filter(function(t){return inCycle(t,c)&&t.type==='income';});
   $('incWrap').style.display=inc.length?'block':'none';$('incList').innerHTML=txList(inc);
@@ -170,7 +184,7 @@ var openSheetEl=null,lockY=null;
 function lockBody(){if(lockY!==null)return;lockY=window.scrollY||0;var b=document.body.style;b.position='fixed';b.top=(-lockY)+'px';b.left='0';b.right='0';b.width='100%';document.documentElement.classList.add('locked');}
 function unlockBody(){if(lockY===null)return;var y=lockY,b=document.body.style;lockY=null;b.position=b.top=b.left=b.right=b.width='';document.documentElement.classList.remove('locked');window.scrollTo(0,y);}
 function openSheet(id){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=$(id);lockBody();$('scrim').style.display='block';openSheetEl.scrollTop=0;openSheetEl.classList.add('open');}
-function closeSheet(){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=null;$('scrim').style.display='none';unlockBody();}
+function closeSheet(){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=null;$('scrim').style.display='none';if($('calView').style.display==='block')renderCal();else unlockBody();}
 /* focus without letting iOS scroll the sheet down to the field */
 function softFocus(el,sheet){try{el.focus({preventScroll:true});}catch(e){el.focus();}if(sheet){sheet.scrollTop=0;requestAnimationFrame(function(){sheet.scrollTop=0;});}}
 var add={type:'expense',editId:null,cat:null};
@@ -202,7 +216,7 @@ function snapshot(){return JSON.stringify({tx:S.tx,mc:S.merchantCats,cats:S.cats
 var toastTimer=null;
 function toast(msg,snap){var el=$('toast');clearTimeout(toastTimer);
   el.innerHTML='<span>'+esc(msg)+'</span>'+(snap?' · <button id="undoBtn">تراجع</button>':'');el.classList.add('show');
-  if(snap)$('undoBtn').onclick=function(){var o=JSON.parse(snap);S.tx=o.tx;S.merchantCats=o.mc;S.cats=o.cats;save();el.classList.remove('show');if(openSheetEl&&openSheetEl.id==='setSheet')renderCatEdit();render();};
+  if(snap)$('undoBtn').onclick=function(){var o=JSON.parse(snap);S.tx=o.tx;S.merchantCats=o.mc;S.cats=o.cats;save();el.classList.remove('show');if(openSheetEl&&openSheetEl.id==='setSheet')renderCatEdit();render();if($('calView').style.display==='block')renderCal();};
   toastTimer=setTimeout(function(){el.classList.remove('show');},5000);}
 
 /* ===== Search ===== */
@@ -216,7 +230,7 @@ function renderSearch(){var q=$('histSearch').value,f=$('histFound');if(!q.trim(
 
 /* ===== App badge: today's allowance (opt-in) ===== */
 function updateBadge(s){try{if(!navigator.setAppBadge)return;
-  if(S.badge){var v=Math.max(0,s.daily);(v?navigator.setAppBadge(v):navigator.clearAppBadge()).catch(function(){});}
+  if(S.badge){var v=Math.max(0,Math.floor(s.todayLeft));(v?navigator.setAppBadge(v):navigator.clearAppBadge()).catch(function(){});}
   else if(navigator.clearAppBadge)navigator.clearAppBadge().catch(function(){});}catch(e){}}
 function setBadge(on){if(!on){S.badge=false;save();render();renderBadgeToggle();return;}
   var go=function(){S.badge=true;save();render();renderBadgeToggle();};
@@ -247,6 +261,24 @@ function showCycle(st){var rows=S.tx.filter(function(t){return inCycle(t,st.cycl
   $('histMain').style.display='none';$('histDetail').style.display='block';$('histSheet').scrollTop=0;
   $('histBack').onclick=renderHistory;
   $('histTx').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};}
+
+/* ===== Spending calendar (separate screen) ===== */
+var cal={c:null,sel:null};
+var WD=['ح','ن','ث','ر','خ','ج','س'];
+function openCal(){cal.c=cycleFor(today(),S.startDay);cal.sel=null;lockBody();$('calView').style.display='block';$('calView').scrollTop=0;renderCal();}
+function closeCal(){$('calView').style.display='none';unlockBody();render();}
+function shiftCal(n){var c=cal.c,cur=cycleFor(today(),S.startDay);var nc=n<0?cycleFor(new Date(c.start.getFullYear(),c.start.getMonth(),c.start.getDate()-1),S.startDay):cycleFor(c.next,S.startDay);
+  if(nc.start>cur.start)return;cal.c=nc;cal.sel=null;renderCal();}
+function renderCal(){var c=cal.c,days=calDays(c),cur=cycleFor(today(),S.startDay),st=statsFor(c);
+  $('calTitle').innerHTML=rangeHTML(c);$('calNext').disabled=c.startISO===cur.startISO;
+  $('calSum').innerHTML='صرفت <span class="n">'+money(st.spent)+'</span> من <span class="n">'+money(st.budget)+'</span>';
+  var h=WD.map(function(w){return '<i>'+w+'</i>';}).join('');for(var i=0;i<days[0].dow;i++)h+='<span></span>';
+  h+=days.map(function(x){return '<button class="cd '+x.state+(x.today?' td':'')+(cal.sel===x.date?' sel':'')+'" data-d="'+x.date+'"><b class="n">'+x.day+'</b><em class="n">'+(x.spent?(x.spent>=1000?(Math.round(x.spent/100)/10)+'k':Math.round(x.spent)):'')+'</em></button>';}).join('');
+  $('calGrid').innerHTML=h;
+  var sd=cal.sel&&days.find(function(x){return x.date===cal.sel;});
+  if(!sd){$('calDay').innerHTML='';return;}
+  var rows=S.tx.filter(function(t){return t.date===sd.date;}),dd=parseISO(sd.date);
+  $('calDay').innerHTML='<div class="cday-h"><b>'+DAYS[dd.getDay()]+' '+fmtD(dd)+'</b><span class="n '+sd.state+'">'+money(sd.spent)+(sd.state!=='future'?' / '+money(sd.limit):'')+'</span></div><div class="card" style="padding-top:2px">'+(txList(rows)||'<div class="empty">ما فيه عمليات</div>')+'</div>';}
 
 /* ===== Theme ===== */
 function applyTheme(){var t=S.theme||'auto',root=document.documentElement;if(t==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',t);
@@ -327,6 +359,12 @@ function bind(){
   $('budgetTap').onclick=function(){$('budgetIn').value=summary().budget||'';openSheet('budgetSheet');$('budgetIn').focus();};
   $('budgetSave').onclick=function(){var b=parseNum($('budgetIn').value);if(b>=0)setCurrentBudget(b);closeSheet();render();};
   $('gearBtn').onclick=openSettings;$('setSave').onclick=function(){saveSettings();closeSheet();};
+  $('calBtn').onclick=openCal;$('calBack').onclick=closeCal;$('calPrev').onclick=function(){shiftCal(-1);};$('calNext').onclick=function(){shiftCal(1);};
+  $('calGrid').onclick=function(e){var b=e.target.closest('.cd');if(!b)return;cal.sel=cal.sel===b.dataset.d?null:b.dataset.d;renderCal();};
+  $('calDay').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};
+  (function(){var x0=null,y0=null,v=$('calView');v.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+    v.addEventListener('touchend',function(e){if(x0===null)return;var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
+      if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)shiftCal(dx>0?-1:1);},{passive:true});})();
   $('histBtn').onclick=function(){renderHistory();openSheet('histSheet');};
   // two-tap confirm: first tap arms the button (حذف؟), second tap deletes; undo toast afterwards
   $('catEdit').onclick=function(e){var b=e.target.closest('button');if(!b||S.cats.length<=1)return;
@@ -365,5 +403,5 @@ var pending=smsFromUrl();if(pending&&S.onboarded)openSms(pending);
 window.addEventListener('hashchange',function(){var t=smsFromUrl();if(t&&S.onboarded)openSms(t);});
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,searchTx:searchTx,allowance:allowance,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
 })();

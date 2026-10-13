@@ -162,25 +162,67 @@ html.locked,html.locked body{overflow:hidden}
 #addSheet .chip{padding:6px 2px;font-size:12px;border-radius:14px;min-height:58px;gap:2px}#addSheet .chip .e{font-size:22px}
 #addSheet .seg button{padding:5px 8px}#addSheet .amount-in input{line-height:1.1;padding:0}#addSheet .hint{min-height:16px;line-height:16px}
 #addSheet .chip{line-height:1.2;min-height:54px}#addSheet .row2{margin-top:4px}#addSheet .grab{margin-bottom:8px}
+
+/* v2.4 home hierarchy */
+.top{padding:16px 0 4px}.icons{gap:6px}.icon-btn{width:40px;height:40px;font-size:18px}
+.hero{padding:22px 22px 14px;border-radius:28px}
+.hero .lbl{font-size:14px;letter-spacing:.2px}
+.hero .big{font-size:56px;margin:2px 0 0}
+.ring-bar{height:6px;margin:14px 0 4px}
+.sub{font-size:13px;align-items:center}
+.daily{display:block;margin:12px 0 0;background:var(--card);color:var(--text);border-radius:24px;padding:16px 20px 14px;box-shadow:0 2px 14px var(--shadow);text-align:right;font-size:14px}
+.daily .dl{color:var(--muted);font-size:14px}
+.daily .dv{font-size:34px;font-weight:800;line-height:1.15;margin-top:2px;color:var(--acc)}.daily .dv .cur{font-size:15px;font-weight:600;color:var(--muted);margin-right:4px}
+.daily.neg{background:var(--card);color:var(--text)}.daily.neg .dv{color:var(--red)}
+.daily small{color:var(--muted);opacity:1;font-size:12px;margin-top:6px}
+.tbar{height:4px;border-radius:3px;background:var(--line);overflow:hidden;margin:10px 0 5px}
+.tbar>div{height:100%;border-radius:3px;background:var(--acc);opacity:.75;transition:width .4s,background .3s}
+.tbar.warn>div{background:#e5a23a}.tbar.over>div{background:var(--red)}
+.tfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}.tlbl{font-size:12px;color:var(--muted)}.tfoot small{margin:0!important}
+#calDay .day{display:none}
+h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
+/* calendar screen */
+.calv{position:fixed;inset:0;z-index:9;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding:calc(12px + env(safe-area-inset-top)) 18px 40px}
+.calv>*{max-width:444px;margin-left:auto;margin-right:auto}
+.cal-top{display:flex;justify-content:space-between;align-items:center;min-height:44px}.cal-top .back{min-height:44px}
+.cal-sum{color:var(--muted);font-size:13px}
+.cal-nav{display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px}
+.cal-nav b{font-size:16px}.cal-nav button{width:44px;height:44px;border-radius:50%;background:var(--card);font-size:22px;color:var(--acc);box-shadow:0 1px 4px var(--shadow)}
+.cal-nav button:disabled{opacity:.3}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal-grid i{font-style:normal;text-align:center;color:var(--muted);font-size:12px;padding-bottom:2px}
+.cd{min-height:52px;border-radius:12px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;min-width:0}
+.cd b{font-size:12px;font-weight:500;color:var(--muted)}.cd em{font-style:normal;font-size:12px;font-weight:700;min-height:15px}
+.cd.ok{background:var(--acc-soft)}.cd.ok em{color:var(--acc)}
+.cd.over{background:var(--red-soft)}.cd.over em{color:var(--red)}
+.cd.future{opacity:.45}.cd.td{outline:1.5px solid var(--acc)}.cd.sel{outline:2px solid var(--text)}
+.cday-h{display:flex;justify-content:space-between;align-items:center;margin:18px 6px 8px;font-size:15px}
+.cday-h .ok{color:var(--acc)}.cday-h .over{color:var(--red)}.cday-h .none,.cday-h .future{color:var(--muted)}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="cycle"><div id="cycleTxt"></div><small id="daysTxt"></small></div>
-  <div class="icons"><button class="icon-btn" id="histBtn" aria-label="السجل">🗓️</button><button class="icon-btn" id="gearBtn" aria-label="الإعدادات">⚙️</button></div>
+  <div class="icons"><button class="icon-btn" id="calBtn" aria-label="التقويم">📅</button><button class="icon-btn" id="histBtn" aria-label="السجل">📊</button><button class="icon-btn" id="gearBtn" aria-label="الإعدادات">⚙️</button></div>
 </header>
 <section class="hero">
   <div class="lbl">باقي لك</div>
   <div class="big" id="remain"></div>
   <div class="ring-bar" id="bar"><div id="barFill"></div></div>
   <div class="sub"><span>صرفت <b class="n" id="spent"></b></span><span>من <button class="budget-tap n" id="budgetTap"></button></span></div>
-  <div class="daily" id="daily"></div>
 </section>
+<section class="daily" id="daily"></section>
 <h3>وين راحت فلوسك</h3>
 <div class="card" id="cats"></div>
 <h3>آخر العمليات</h3>
 <div class="card" id="list" style="padding-top:2px"></div>
 <div id="incWrap" style="display:none"><div class="inc-h"><span>💵 الدخل</span><span class="n" id="incTot"></span></div><div class="card inc-card" id="incList" style="padding-top:2px"></div></div>
+<section class="calv" id="calView" style="display:none">
+  <div class="cal-top"><button class="back" id="calBack">→ رجوع</button><span class="cal-sum" id="calSum"></span></div>
+  <div class="cal-nav"><button id="calPrev" aria-label="الدورة السابقة">›</button><b id="calTitle"></b><button id="calNext" aria-label="الدورة التالية">‹</button></div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div id="calDay"></div>
+</section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <button class="fab" id="fab" aria-label="إضافة">+</button>
 <div class="scrim" id="scrim"></div>
