@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>قائمة السوق</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:#f3f6f4;color:#1d2b24}
+.w{max-width:620px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:8px 0}.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+.cnt{font-size:14px;color:#456}
+button{font:inherit;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;background:#1f7a4d;color:#fff}
+button.g{background:#dfe7e2;color:#1d2b24}
+.sec{background:#fff;border-radius:14px;padding:6px 14px 10px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
+.sec h2{font-size:16px;color:#1f7a4d;margin:10px 0 4px}
+label{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #eef2ef;font-size:19px;cursor:pointer}
+label:last-child{border-bottom:0}
+input[type=checkbox]{width:24px;height:24px;accent-color:#1f7a4d}
+.done span{text-decoration:line-through;color:#9aa8a0}
+body.hide .done{display:none}
+.add{display:flex;gap:8px;margin-bottom:12px}.add input{flex:1;font:inherit;padding:10px;border:1px solid #cdd8d1;border-radius:10px}
+.fin{text-align:center;padding:30px;font-size:20px;display:none}
+</style></head><body><div class="w">
+<h1>🛒 قائمة السوق</h1>
+<div class="bar"><span class="cnt" id="cnt"></span>
+<span><button class="g" id="tg">إظهار المشطوب</button> <button class="g" id="reset">إعادة الكل</button> <button id="clear">تشطيب الكل</button></span></div>
+<div class="add"><input id="ni" placeholder="أضف صنف…"><button id="nb">إضافة</button></div>
+<div id="list"></div><div class="fin" id="fin">🎉 خلصت كل الأغراض</div>
+</div>
+<script>
+const DEF={"مؤونة":["سكر","رز","مكرونات","شابورة"],"تنظيف وعناية":["صابون ملابس","شامبو دوف","صابون يد","مناديل"],"مخبوزات وألبان ومشروبات":["خبز","صامولي","جبنة سايلة","كرتون حليب","سنتوب","شاي أخضر"],"خضار وفواكه":["طماطم","خيار","بصل","بقدونس","كزبرة","موز","رمان","حبحب","ملوخية (٢)"],"إضافات":["سيفن أب زيرو","شطة"]};
+const K="shoplist.v1";let S=JSON.parse(localStorage.getItem(K)||"null");
+if(!S){S={hide:true,items:[]};for(const c in DEF)DEF[c].forEach(n=>S.items.push({c,n,d:false}))}
+const save=()=>localStorage.setItem(K,JSON.stringify(S));
+function r(){const L=document.getElementById("list");L.innerHTML="";document.body.classList.toggle("hide",S.hide);
+document.getElementById("tg").textContent=S.hide?"إظهار المشطوب":"إخفاء المشطوب";
+const cats=[...new Set(S.items.map(i=>i.c))];
+cats.forEach(c=>{const its=S.items.map((x,i)=>[x,i]).filter(([x])=>x.c===c);if(S.hide&&its.every(([x])=>x.d))return;
+const s=document.createElement("div");s.className="sec";s.innerHTML="<h2>"+c+"</h2>";
+its.forEach(([x,i])=>{const l=document.createElement("label");if(x.d)l.className="done";
+l.innerHTML='<input type="checkbox" '+(x.d?"checked":"")+'><span></span>';l.querySelector("span").textContent=x.n;
+l.querySelector("input").onchange=e=>{S.items[i].d=e.target.checked;save();r()};s.appendChild(l)});L.appendChild(s)});
+const left=S.items.filter(i=>!i.d).length;document.getElementById("cnt").textContent="باقي "+left+" من "+S.items.length;
+document.getElementById("fin").style.display=left===0&&S.items.length?"block":"none"}
+document.getElementById("clear").onclick=()=>{S.items.forEach(i=>i.d=true);save();r()};
+document.getElementById("reset").onclick=()=>{S.items.forEach(i=>i.d=false);save();r()};
+document.getElementById("tg").onclick=()=>{S.hide=!S.hide;save();r()};
+function add(){const v=document.getElementById("ni").value.trim();if(!v)return;S.items.push({c:"إضافات",n:v,d:false});document.getElementById("ni").value="";save();r()}
+document.getElementById("nb").onclick=add;document.getElementById("ni").onkeydown=e=>{if(e.key==="Enter")add()};
+r();
+</script></body></html>
