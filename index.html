@@ -239,6 +239,22 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
 #addSheet.pad .chip{min-height:50px;padding:4px 1px;font-size:11px}#addSheet.pad .chip .e{font-size:20px}
 #addSheet.pad .row2{margin-top:0}#addSheet.pad .row2 .link{min-height:44px}
 #addSheet.pad.editing .numpad button{height:clamp(38px,5.6vh,50px)}
+/* v2.7.0 additive: sub labels, sub picker, clipboard tap button, sub manager */
+.subl{color:var(--muted);font-weight:400;font-size:12px}
+.subrow{display:none;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}
+.schip{min-height:40px;padding:0 14px;border-radius:20px;background:var(--bg);font-size:13px;font-weight:600}
+.schip.sel{background:var(--acc-soft);outline:2px solid var(--acc);color:var(--acc)}
+.chip.sug{outline:1.5px dashed var(--acc);outline-offset:-2px}
+.clipbar{display:none;align-items:center;gap:6px;margin:12px 0 0}
+.clip-go{flex:1;min-height:44px;border-radius:16px;background:var(--acc-soft);color:var(--acc);font-weight:700;font-size:15px}
+.clip-x{width:44px;min-height:44px;color:var(--muted);font-size:15px}
+.subdet{border-top:1px solid var(--line);margin-top:12px;padding-top:2px}
+.subdet summary{min-height:44px;display:flex;align-items:center;color:var(--acc);font-size:14px;cursor:pointer}
+.subdet select{width:100%;background:var(--bg);border:none;border-radius:12px;padding:10px;font-size:15px}
+#subEdit{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#subEdit span{display:inline-flex;align-items:center;background:var(--bg);border-radius:12px;padding:0 0 0 2px;padding-right:12px;font-size:14px}
+#subEdit span button{min-width:44px;height:44px;margin:0;font-size:15px;border-radius:12px;color:var(--muted)}
+#subEdit span button.arm{background:var(--red-soft);color:var(--red);font-weight:700;padding:0 10px}
 </style>
 </head>
 <body>
@@ -257,6 +273,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
     <div class="rin"><span class="mood" id="mood"></span><div class="dv"><span class="n" id="dvN"></span><span class="cur">ر.س</span></div></div></div>
   <div class="dtx"><div class="dl" id="dl"></div><span class="tlbl" id="todayLbl"></span></div>
 </section>
+<div class="clipbar" id="clipBar"><button class="clip-go" id="clipGo">📋 الصق رسالة البنك</button><button class="clip-x" id="clipX" aria-label="إخفاء">✕</button></div>
 <h3>وين راحت فلوسك</h3>
 <div class="card" id="cats"></div>
 <h3>آخر العمليات</h3>
@@ -281,6 +298,7 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
   <div class="hint" id="addHint"></div>
   <div class="numpad" id="numpad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k=".">.</button><button data-k="0">0</button><button data-k="del" aria-label="مسح">⌫</button></div>
   <div class="chips" id="chips"></div>
+  <div class="subrow" id="subRow"></div>
   <button class="btn" id="quickSave" style="display:none">حفظ</button>
   <div class="row2"><button class="link" id="detailsLink">+ ملاحظة / تاريخ</button></div>
   <div class="details" id="details">
@@ -320,6 +338,14 @@ h3{font-size:15px;color:var(--muted);font-weight:600;margin:24px 6px 10px}
       <input id="newCat" placeholder="تصنيف جديد" style="flex:1;min-width:0;background:var(--bg);border:none;border-radius:12px;padding:9px">
       <button id="addCat" style="color:var(--acc);font-weight:700">إضافة</button>
     </div>
+    <details class="subdet" id="subDet"><summary>＋ تصنيفات فرعية (اختياري)</summary>
+      <select id="subCat" aria-label="التصنيف الرئيسي"></select>
+      <div id="subEdit"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="newSub" maxlength="30" placeholder="فرعي جديد (مثل: خضار)" style="flex:1;min-width:0;background:var(--bg);border:none;border-radius:12px;padding:9px">
+        <button id="addSub" style="color:var(--acc);font-weight:700">إضافة</button>
+      </div>
+    </details>
   </div>
   <div class="set-row" id="badgeRow" style="display:none"><span>رقم على الأيقونة</span><button class="tgl" id="badgeTgl" role="switch" aria-checked="false" aria-label="رقم على الأيقونة"></button></div>
   <div class="saved" id="setSaved">✓ انحفظ</div>

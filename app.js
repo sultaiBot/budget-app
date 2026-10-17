@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.6.0';
+var APP_VERSION='2.7.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -12,6 +12,8 @@ var INCOME_CATS=['راتب','دخل إضافي','دخل','أخرى'];
 /* v3 -> v4 renames of old default categories (entries & learned merchants re-pointed, nothing deleted) */
 var RENAME4={'أكل':'مطاعم','أخرى':'غيرها'};
 var OLD_DEFAULTS3=['أكل','قهوة','بنزين','تسوق','فواتير','سكن','صحة','ترفيه','أخرى'];
+/* v2.7.0 optional subcategories: S.subs = {mainCat:[names]}. Moves/merges a category's subs when the category is renamed (never loses a name). */
+function moveSubs(d,o,n){if(!d||!d.subs||typeof d.subs!=='object'||!Array.isArray(d.subs[o]))return;var a=Array.isArray(d.subs[n])?d.subs[n]:[];d.subs[o].forEach(function(x){if(a.indexOf(x)<0)a.push(x);});d.subs[n]=a;delete d.subs[o];}
 var MIGRATIONS={
   // 1 -> 2: add schema, per-cycle budgets, lastBackup
   1:function(d){d.cycleBudgets=d.cycleBudgets||{};
@@ -29,6 +31,7 @@ var MIGRATIONS={
       if(has(n)){cats=cats.filter(function(c){return c.name!==o;});}           // target exists: merge into it
       else cats.forEach(function(c){if(c.name===o){c.name=n;c.emoji=DEF_CATS.find(function(x){return x[0]===n;})[1];}});
       tx.forEach(function(t){if(t&&t.type!=='income'&&t.cat===o)t.cat=n;});
+      moveSubs(d,o,n);
       Object.keys(mc).forEach(function(k){if(mc[k]===o)mc[k]=n;});});
     var used=function(n){return tx.some(function(t){return t&&t.cat===n;})||Object.keys(mc).some(function(k){return mc[k]===n;});};
     cats=cats.filter(function(c){return !(c&&OLD_DEFAULTS3.indexOf(c.name)>=0&&!DEF_CATS.some(function(x){return x[0]===c.name;})&&!used(c.name));});
@@ -57,6 +60,13 @@ function parseISO(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
 function today(){var d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
 function parseNum(s){s=String(s==null?'':s).replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[٫,]/g,function(c){return c==='٫'?'.':'';}).trim();if(s==='')return NaN;var n=Number(s);return isFinite(n)?n:NaN;}
 
+/* v2.7.0: tolerant readers for the optional structures (old backups simply don't have them) */
+function cleanSubs(x){var out={};if(!x||typeof x!=='object'||Array.isArray(x))return out;
+  Object.keys(x).forEach(function(k){if(k==='__proto__'||!Array.isArray(x[k]))return;var seen={},a=[];
+    x[k].forEach(function(n){if(typeof n!=='string')return;n=n.trim().slice(0,30);if(n&&!seen[n]){seen[n]=1;a.push(n);}});if(a.length)out[k]=a;});return out;}
+function cleanMerchantSubs(x){var out={};if(!x||typeof x!=='object'||Array.isArray(x))return out;
+  Object.keys(x).forEach(function(k){if(k!=='__proto__'&&typeof x[k]==='string'&&x[k])out[k]=x[k];});return out;}
+function subsOf(cat){var l=S.subs&&S.subs[cat];return Array.isArray(l)?l:[];}
 var S;
 function normalize(d){
   if(!d||typeof d!=='object')d={schema:SCHEMA};
@@ -65,6 +75,7 @@ function normalize(d){
   d.cats=Array.isArray(d.cats)&&d.cats.length?d.cats:DEF_CATS.map(function(c){return {name:c[0],emoji:c[1]};});
   d.startDay=Math.min(28,Math.max(1,parseInt(d.startDay,10)||27));d.budget=Number(d.budget)||0;d.salary=Number(d.salary)||0;
   d.cycleBudgets=d.cycleBudgets&&typeof d.cycleBudgets==='object'?d.cycleBudgets:{};
+  d.subs=cleanSubs(d.subs);d.merchantSubs=cleanMerchantSubs(d.merchantSubs);
   d.merchantCats=d.merchantCats&&typeof d.merchantCats==='object'?d.merchantCats:{};if(['auto','light','dark'].indexOf(d.theme)<0)d.theme='auto';if(d.numpad!=='system')d.numpad='app';
   if(!d.schema)d.schema=SCHEMA;return d;}
 function load(){var raw=null,d=null;try{raw=localStorage.getItem(KEY);d=raw?JSON.parse(raw):null;}catch(e){
@@ -160,10 +171,12 @@ function fmtD(d){return d.getDate()+' '+MONTHS[d.getMonth()];}
 function rangeHTML(c){return '<span class="n">'+c.start.getDate()+'</span> '+MONTHS[c.start.getMonth()]+' – <span class="n">'+c.end.getDate()+'</span> '+MONTHS[c.end.getMonth()]+(c.start.getFullYear()!==today().getFullYear()||c.end.getFullYear()!==today().getFullYear()?' <span class="n">'+c.end.getFullYear()+'</span>':'');}
 
 function addTx(o){var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
-  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':OTHER),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};if(o.time)t.time=o.time;if(o.mkey)t.mkey=o.mkey;if(o.fp)t.fp=o.fp;
+  var t={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),type:o.type==='income'?'income':'expense',amount:a,cat:o.cat||(o.type==='income'?'دخل':OTHER),date:o.date||iso(today()),note:o.note||'',ts:Date.now()};if(o.time)t.time=o.time;if(o.mkey)t.mkey=o.mkey;if(o.fp)t.fp=o.fp;if(o.sub&&t.type==='expense')t.sub=String(o.sub);
   S.tx.push(t);save();return t;}
 function updateTx(id,o){var t=S.tx.find(function(x){return x.id===id;});if(!t)return null;var a=Math.round(parseNum(o.amount)*100)/100;if(!(a>0))throw new Error('amount');
-  t.type=o.type;t.amount=a;t.cat=o.cat;t.date=o.date||t.date;t.note=o.note||'';save();if(t.type==='expense')learnFromTx(t);return t;}
+  var oldCat=t.cat;t.type=o.type;t.amount=a;t.cat=o.cat;t.date=o.date||t.date;t.note=o.note||'';
+  if(o.sub!==undefined){if(o.sub&&t.type==='expense')t.sub=String(o.sub);else delete t.sub;}else if(oldCat!==t.cat||t.type!=='expense')delete t.sub;   /* v2.7.0 optional sub */
+  save();if(t.type==='expense')learnFromTx(t);return t;}
 function deleteTx(id){S.tx=S.tx.filter(function(x){return x.id!==id;});save();}
 
 function catBars(by){var ent=Object.keys(by).map(function(k){return [k,by[k]];}).sort(function(a,b){return b[1]-a[1];});var max=ent.length?ent[0][1]:0;
@@ -195,7 +208,7 @@ function txList(rows){if(!rows.length)return '';rows=rows.slice().sort(function(
   rows.forEach(function(t){if(t.date!==cur){if(cur)html+='</div>';cur=t.date;var dd=parseISO(t.date);
       var dayTotal=rows.filter(function(x){return x.date===cur&&x.type==='expense';}).reduce(function(a,x){return a+x.amount;},0);
       html+='<div class="day"><span>'+(cur===t0?'اليوم':cur===t1?'أمس':DAYS[dd.getDay()]+' '+fmtD(dd))+'</span><span class="n">'+(dayTotal?'-'+money(dayTotal):'')+'</span></div><div>';}
-    html+='<button class="tx'+(t.type==='income'?' inc':'')+'" data-id="'+t.id+'"><span class="em">'+catEmoji(t.cat)+'</span><span class="mid"><div>'+esc(t.cat)+'</div>'+(t.note?'<small>'+esc(t.note)+'</small>':'')+'</span><span class="amt n'+(t.type==='income'?' in">+':'">-')+money(t.amount)+'</span></button>';});
+    html+='<button class="tx'+(t.type==='income'?' inc':'')+'" data-id="'+t.id+'"><span class="em">'+catEmoji(t.cat)+'</span><span class="mid"><div>'+esc(t.cat)+(t.sub?' <span class="subl">· '+esc(t.sub)+'</span>':'')+'</div>'+(t.note?'<small>'+esc(t.note)+'</small>':'')+'</span><span class="amt n'+(t.type==='income'?' in">+':'">-')+money(t.amount)+'</span></button>';});
   return html+'</div>';}
 
 var RC=2*Math.PI*52,lastHome=null;
@@ -231,44 +244,53 @@ function openSheet(id){if(openSheetEl)openSheetEl.classList.remove('open');openS
 function closeSheet(){if(openSheetEl)openSheetEl.classList.remove('open');openSheetEl=null;$('scrim').style.display='none';if($('calView').style.display==='block')renderCal();else unlockBody();}
 /* focus without letting iOS scroll the sheet down to the field */
 function softFocus(el,sheet){try{el.focus({preventScroll:true});}catch(e){el.focus();}if(sheet){sheet.scrollTop=0;requestAnimationFrame(function(){sheet.scrollTop=0;});}}
-var add={type:'expense',editId:null,cat:null};
+var add={type:'expense',editId:null,cat:null,sub:null,sugCat:null,orig:null};
 function renderChips(){var list=add.type==='income'?[{name:'راتب',emoji:'💵'},{name:'دخل إضافي',emoji:'💰'},{name:'أخرى',emoji:'📦'}]:S.cats;
   $('chips').classList.toggle('compact',!!add.editId);
-  $('chips').innerHTML=list.map(function(c){return '<button class="chip'+((add.editId||add.quick!=null)&&add.cat===c.name?' sel':'')+'" data-cat="'+esc(c.name)+'"><span class="e">'+c.emoji+'</span>'+esc(c.name)+'</button>';}).join('');}
-function setType(t){add.type=t;[].forEach.call($('typeSeg').children,function(b){b.classList.toggle('on',b.dataset.t===t);});renderChips();}
+  $('chips').innerHTML=list.map(function(c){return '<button class="chip'+((add.editId||add.quick!=null)&&add.cat===c.name?' sel':(add.sugCat===c.name&&add.cat!==c.name?' sug':''))+'" data-cat="'+esc(c.name)+'"><span class="e">'+c.emoji+'</span>'+esc(c.name)+'</button>';}).join('');}
+function setType(t){add.type=t;[].forEach.call($('typeSeg').children,function(b){b.classList.toggle('on',b.dataset.t===t);});renderChips();renderSubs();}
+/* v2.7.0 subcategory picker in the add/edit sheet: hidden unless the chosen main category has user-defined subs */
+function renderSubs(){var el=$('subRow');if(!el)return;var list=(add.type==='expense'&&add.cat&&(add.editId||add.quick!=null))?subsOf(add.cat).slice():[];
+  if(add.editId&&add.orig&&add.orig.sub&&add.cat===add.orig.cat&&list.indexOf(add.orig.sub)<0)list.push(add.orig.sub);
+  if(!list.length){el.style.display='none';el.innerHTML='';return;}
+  el.innerHTML=list.map(function(n){return '<button class="schip'+(add.sub===n?' sel':'')+'" data-sub="'+esc(n)+'">'+esc(n)+'</button>';}).join('');el.style.display='flex';}
+/* what the app would pick for this merchant text (learned → fuzzy → dictionary); used only as a hint/preselect, never overrides a tap */
+function suggestFor(note){if(!SmsParse.normMerchant(note))return null;return SmsParse.suggestCat(note,catNames(),S.merchantCats,'',{learnedSubs:S.merchantSubs,subs:S.subs});}
+function noteHint(){if(add.editId||add.type!=='expense'||add.cat)return;var sg=suggestFor($('note').value),c=sg?sg.cat:null;if(c!==add.sugCat){add.sugCat=c;renderChips();}}
 function recentMerchants(){var seen={},out=[];S.tx.slice().sort(function(a,b){return (b.ts||0)-(a.ts||0);}).forEach(function(t){
     if(out.length>=3||t.type!=='expense'||!t.note)return;var k=SmsParse.normMerchant(t.note);if(!k||seen[k])return;seen[k]=1;
     var same=S.tx.filter(function(x){return x.type==='expense'&&x.note&&SmsParse.normMerchant(x.note)===k;}).sort(function(a,b){return (b.ts||0)-(a.ts||0);});
     var amt=same.length>=2&&same[0].amount===same[1].amount?same[0].amount:null;
     out.push({note:t.note,cat:t.cat,amount:amt});});return out;}
-function pickRecent(i){var r=recentMerchants()[i];if(!r)return;add.quick=i;add.cat=r.cat;$('note').value=r.note;if(r.amount&&!$('amt').value)$('amt').value=r.amount;
-  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent='';renderChips();softFocus($('amt'));}
+function pickRecent(i){var r=recentMerchants()[i];if(!r)return;add.quick=i;add.cat=r.cat;add.sub=null;$('note').value=r.note;{var sg=suggestFor(r.note);if(sg&&sg.cat===r.cat&&sg.sub)add.sub=sg.sub;}if(r.amount&&!$('amt').value)$('amt').value=r.amount;
+  $('details').classList.add('show');$('quickSave').style.display='block';var h=$('addHint');h.className='hint';h.textContent='';renderChips();renderSubs();softFocus($('amt'));}
 function padMode(){return S.numpad!=='system';}
 function applyPad(){var on=padMode(),i=$('amt');$('addSheet').classList.toggle('pad',on);i.setAttribute('inputmode',on?'none':'decimal');
   var seg=$('padSeg');if(seg)[].forEach.call(seg.children,function(b){b.classList.toggle('on',b.dataset.v===(on?'app':'system'));});}
 function pressPad(k){var i=$('amt'),v=padKey(i.value,k);if(v!==i.value){i.value=v;var w=i.parentNode;w.classList.remove('bump');void w.offsetWidth;w.classList.add('bump');}
   var h=$('addHint');if(h.classList.contains('err')){h.className='hint';h.textContent='';}}
-function openAdd(tx){applyPad();add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
+function openAdd(tx){applyPad();add.editId=tx?tx.id:null;add.cat=tx?tx.cat:null;add.quick=null;add.sub=tx&&tx.sub?tx.sub:null;add.sugCat=null;add.orig=tx?{cat:tx.cat,sub:tx.sub||null}:null;$('quickSave').style.display='none';setType(tx?tx.type:'expense');
   $('amt').value=tx?tx.amount:'';$('note').value=tx?tx.note:'';$('date').value=tx?tx.date:iso(today());
   $('details').classList.toggle('show',!!(tx&&tx.note));$('editBtns').style.display=tx?'flex':'none';$('smsLink').style.display=tx?'none':'flex';$('addSheet').classList.toggle('editing',!!tx);
-  var h=$('addHint');h.className='hint';h.textContent='';
+  var h=$('addHint');h.className='hint';h.textContent='';renderSubs();
   openSheet('addSheet');softFocus($('amt'),$('addSheet'));}
 function commit(cat){var o={type:add.type,amount:$('amt').value,cat:cat,date:$('date').value||iso(today()),note:$('note').value.trim()};
+  o.sub=(add.type==='expense'&&add.sub&&(subsOf(cat).indexOf(add.sub)>=0||(add.editId&&add.orig&&add.orig.cat===cat&&add.orig.sub===add.sub)))?add.sub:'';
   var snap=snapshot();
   try{if(add.editId)updateTx(add.editId,o);else{var t=addTx(o);if(t.type==='expense'&&t.note)learnFromTx(t);}}catch(e){var h=$('addHint');h.className='hint err';h.textContent='اكتب المبلغ أول';softFocus($('amt'));return;}
   closeSheet();render({anim:true});toast('تم الحفظ',snap);}
 
 /* ===== Undo toast (replaces confirm) ===== */
-function snapshot(){return JSON.stringify({tx:S.tx,mc:S.merchantCats,cats:S.cats});}
+function snapshot(){return JSON.stringify({tx:S.tx,mc:S.merchantCats,cats:S.cats,subs:S.subs,ms:S.merchantSubs});}
 var toastTimer=null;
 function toast(msg,snap){var el=$('toast');clearTimeout(toastTimer);
   el.innerHTML='<span>'+esc(msg)+'</span>'+(snap?' · <button id="undoBtn">تراجع</button>':'');el.classList.add('show');
-  if(snap)$('undoBtn').onclick=function(){var o=JSON.parse(snap);S.tx=o.tx;S.merchantCats=o.mc;S.cats=o.cats;save();el.classList.remove('show');if(openSheetEl&&openSheetEl.id==='setSheet')renderCatEdit();render();if($('calView').style.display==='block')renderCal();};
+  if(snap)$('undoBtn').onclick=function(){var o=JSON.parse(snap);S.tx=o.tx;S.merchantCats=o.mc;S.cats=o.cats;if(o.subs)S.subs=o.subs;if(o.ms)S.merchantSubs=o.ms;save();el.classList.remove('show');if(openSheetEl&&openSheetEl.id==='setSheet'){renderCatEdit();renderSubEdit();}render();if($('calView').style.display==='block')renderCal();};
   toastTimer=setTimeout(function(){el.classList.remove('show');},5000);}
 
 /* ===== Search ===== */
 function searchTx(q){var k=SmsParse.normMerchant(q),raw=String(q||'').trim().toLowerCase();if(!raw)return [];
-  return S.tx.filter(function(t){var hay=(t.note||'')+' '+(t.cat||'');return hay.toLowerCase().indexOf(raw)>=0||(k&&SmsParse.normMerchant(hay).indexOf(k)>=0);});}
+  return S.tx.filter(function(t){var hay=(t.note||'')+' '+(t.cat||'')+' '+(t.sub||'');return hay.toLowerCase().indexOf(raw)>=0||(k&&SmsParse.normMerchant(hay).indexOf(k)>=0);});}
 function renderSearch(){var q=$('histSearch').value,f=$('histFound');if(!q.trim()){f.innerHTML='';$('histMain').style.display='block';return;}
   var rows=searchTx(q),tot=rows.filter(function(t){return t.type==='expense';}).reduce(function(a,t){return a+t.amount;},0);
   $('histMain').style.display='none';$('histDetail').style.display='none';
@@ -341,39 +363,54 @@ function fromDmy(s){var m=SmsParse.digits(s).match(/^\s*(\d{1,2})[\/\-.](\d{1,2}
 function openSms(text){$('smsIn').value='';$('smsOut').innerHTML='';$('smsPaste').style.display=(navigator.clipboard&&navigator.clipboard.readText)?'block':'none';openSheet('smsSheet');if(typeof text==='string'&&text){$('smsIn').value=text;parseSms();}else $('smsIn').focus();}
 function catNames(){return S.cats.map(function(c){return c.name;});}
 function parseSms(){var txt=$('smsIn').value,out=$('smsOut');if(!txt.trim()){out.innerHTML='';sms.r=null;return;}
-  var r=SmsParse.parse(txt,{cats:catNames(),learned:S.merchantCats,ref:today()});sms.r=r;
+  var r=SmsParse.parse(txt,{cats:catNames(),learned:S.merchantCats,learnedSubs:S.merchantSubs,subs:S.subs,ref:today()});sms.r=r;
   if(r.credit){out.innerHTML='<div class="note-ok">💚 '+(r.salary?'<b>راتب</b>':'إيداع')+(r.amount?' (<b class="n">'+money(r.amount)+'</b> ر.س)':'')+' — مو مصروف'+(r.amount?'<br><button class="link" id="smsIncome" style="margin:6px 0 0">'+'سجّلها دخل'+'</button>':'')+'</div>';return;}
   if(!(r.amount>0)){out.innerHTML='<div class="hint err" style="margin-top:12px">ما لقيت المبلغ 🤔</div>';return;}
   var cat=r.cat||OTHER;if(catNames().indexOf(cat)<0)cat=S.cats[S.cats.length-1].name;
   out.innerHTML='<div class="sms-card"><div class="big2"><input id="smsAmt" inputmode="decimal" value="'+r.amount+'" style="font-size:34px;font-weight:800;text-align:center;max-width:none;background:none;width:100%" aria-label="المبلغ"></div>'+
     '<div class="f"><label>التصنيف</label><select id="smsCat">'+S.cats.map(function(c){return '<option'+(c.name===cat?' selected':'')+' value="'+esc(c.name)+'">'+c.emoji+' '+esc(c.name)+'</option>';}).join('')+'</select></div>'+
+    '<div class="f" id="smsSubF" style="display:none"><label>الفرعي</label><select id="smsSub"></select></div>'+
     '<div class="f"><label>المكان</label><input id="smsNote" maxlength="80" value="'+esc(r.merchant)+'" placeholder="—" style="text-align:right"></div>'+
     '<div class="f"><label>التاريخ'+(r.time?' <span class="n">'+r.time+'</span>':'')+'</label><input id="smsDate" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" dir="ltr" value="'+dmy(r.date||iso(today()))+'"></div></div>'+
-    (r.learned?'<div class="hint" style="margin-top:6px">✨ من اختيارك السابق</div>':'')+
-    '<button class="btn" id="smsOk">تأكيد ✓</button>';}
+    (r.learned?'<div class="hint" style="margin-top:6px">'+(r.src==='fuzzy'?'✨ شبيه بمكان اخترته قبل':'✨ من اختيارك السابق')+'</div>':(r.cat?'<div class="hint" style="margin-top:6px">🏷️ تصنيف مقترح من الاسم</div>':''))+
+    '<button class="btn" id="smsOk">تأكيد ✓</button>';fillSmsSub(cat,r.cat===cat?r.sub:null);}
+/* v2.7.0: subcategory select in the SMS card — only visible when the chosen category has subs */
+function fillSmsSub(cat,sel){var f=$('smsSubF'),l=$('smsSub');if(!f||!l)return;var list=subsOf(cat);
+  if(!list.length){f.style.display='none';l.innerHTML='';return;}
+  l.innerHTML='<option value="">—</option>'+list.map(function(n){return '<option'+(n===sel?' selected':'')+' value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');f.style.display='flex';}
 function confirmSms(){var r=sms.r||{},cat=$('smsCat').value,note=$('smsNote').value.trim(),d=fromDmy($('smsDate').value);
   if(!d){$('smsDate').classList.add('bad');$('smsDate').focus();return;}
   var snap=snapshot();
   // key on the merchant as parsed from the SMS (what the next paste will produce), not the user-edited note
   var mkey=r.mkey||SmsParse.normMerchant(note),fp=mkey?'':(r.fp||'');
-  try{addTx({type:'expense',amount:$('smsAmt').value,cat:cat,date:d,note:note||r.merchant,time:r.time||null,mkey:mkey,fp:fp});}catch(e){$('smsAmt').focus();return;}
-  learnKeys(mkey,fp,cat);
-  if(note&&r.mkey&&SmsParse.normMerchant(note)!==r.mkey)learnKeys(SmsParse.normMerchant(note),'',cat);
+  var sub=($('smsSub')&&$('smsSubF').style.display!=='none'&&$('smsSub').value)||'';
+  try{addTx({type:'expense',amount:$('smsAmt').value,cat:cat,date:d,note:note||r.merchant,time:r.time||null,mkey:mkey,fp:fp,sub:sub});}catch(e){$('smsAmt').focus();return;}
+  learnKeys(mkey,fp,cat,sub);
+  if(note&&r.mkey&&SmsParse.normMerchant(note)!==r.mkey)learnKeys(SmsParse.normMerchant(note),'',cat,sub);
   closeSheet();render({anim:true});toast('تم الحفظ',snap);}
 /* learning: on EVERY save with a category (new SMS entry, quick add with a note, or later edit) */
-function learnKeys(mkey,fp,cat){if(SmsParse.learn(S.merchantCats,mkey,fp,cat))save();}
+function learnKeys(mkey,fp,cat,sub){var a=SmsParse.learn(S.merchantCats,mkey,fp,cat),b=false;
+  if(sub!==undefined&&(mkey||fp)){S.merchantSubs=S.merchantSubs||{};b=SmsParse.learnSub(S.merchantSubs,mkey,fp,sub);}   /* v2.7.0: also remember the subcategory (or clear it when the user picked none) */
+  if(a||b)save();}
 function learnFromTx(t){if(!t||t.type!=='expense'||!t.cat)return;
-  if(t.mkey||t.fp)learnKeys(t.mkey,t.fp,t.cat);
-  var nk=SmsParse.normMerchant(t.note);if(nk&&nk!==t.mkey)learnKeys(nk,'',t.cat);}
+  if(t.mkey||t.fp)learnKeys(t.mkey,t.fp,t.cat,t.sub||'');
+  var nk=SmsParse.normMerchant(t.note);if(nk&&nk!==t.mkey)learnKeys(nk,'',t.cat,t.sub||'');}
 
 /* ===== Settings & backup ===== */
 function daysSince(isoStr){return isoStr?Math.floor((Date.now()-Date.parse(isoStr))/864e5):Infinity;}
-function openSettings(){$('sDay').value=S.startDay;$('sBudget').value=summary().budget||'';$('sSalary').value=S.salary||'';renderCatEdit();
+function openSettings(){$('sDay').value=S.startDay;$('sBudget').value=summary().budget||'';$('sSalary').value=S.salary||'';renderCatEdit();renderSubEdit();
   var ds=daysSince(S.lastBackup);
   $('backupRemind').innerHTML=(S.tx.length&&ds>=30)?'<div class="remind">💡 '+(S.lastBackup?'آخر نسخة قبل <span class="n">'+ds+'</span> يوم':'ما عندك نسخة احتياطية')+'</div>':'';
   $('lastBackup').innerHTML=S.lastBackup?'آخر نسخة: <span class="n">'+S.lastBackup.slice(0,10)+'</span>':'';
   applyPad();renderBadgeToggle();$('badgeRow').style.display=('setAppBadge' in navigator)?'flex':'none';applyTheme();$('verTxt').textContent='الإصدار '+APP_VERSION+' · بيانات v'+S.schema;openSheet('setSheet');}
 function renderCatEdit(){$('catEdit').innerHTML=S.cats.map(function(c,i){return '<span>'+c.emoji+' '+esc(c.name)+'<button data-i="'+i+'" aria-label="حذف '+esc(c.name)+'">✕</button></span>';}).join('');}
+/* v2.7.0 subcategory manager (Settings, under the category editor) */
+var subSel=null;
+function renderSubEdit(){var sel=$('subCat');if(!sel)return;if(!subSel||!S.cats.some(function(c){return c.name===subSel;}))subSel=S.cats[0].name;
+  sel.innerHTML=S.cats.map(function(c){var n=subsOf(c.name).length;return '<option value="'+esc(c.name)+'"'+(c.name===subSel?' selected':'')+'>'+c.emoji+' '+esc(c.name)+(n?' ('+n+')':'')+'</option>';}).join('');
+  var l=subsOf(subSel);$('subEdit').innerHTML=l.map(function(n,i){return '<span>'+esc(n)+'<button data-i="'+i+'" aria-label="حذف '+esc(n)+'">✕</button></span>';}).join('');}
+function addSub(){var n=$('newSub').value.trim().slice(0,30),c=subSel;if(!n||!c||c==='__proto__')return;if(!S.subs||typeof S.subs!=='object')S.subs={};
+  var l=S.subs[c]=Array.isArray(S.subs[c])?S.subs[c]:[];if(l.indexOf(n)>=0||l.length>=40){$('newSub').value='';return;}l.push(n);save();$('newSub').value='';renderSubEdit();}
 function saveSettings(){var d=parseInt($('sDay').value,10);if(d>=1&&d<=28)S.startDay=d;var b=parseNum($('sBudget').value);if(b>=0&&$('sBudget').value.trim()!=='')setCurrentBudget(b);
   var sl=parseNum($('sSalary').value);S.salary=sl>0?sl:0;save();render();var f=$('setSaved');f.classList.add('show');clearTimeout(f._t);f._t=setTimeout(function(){f.classList.remove('show');},1500);}
 function exportBackup(){var name='ميزانيتي-نسخة-'+iso(today())+'.json',json=JSON.stringify(S,null,2);
@@ -391,7 +428,14 @@ function bind(){
   [].forEach.call(document.querySelectorAll('[data-close]'),function(b){b.onclick=closeSheet;});
   $('fab').onclick=function(){openAdd(null);};$('scrim').onclick=closeSheet;
   $('typeSeg').onclick=function(e){var b=e.target.closest('button');if(b)setType(b.dataset.t);};
-  $('chips').onclick=function(e){var b=e.target.closest('.chip');if(!b)return;if(add.editId||add.quick!=null){add.cat=b.dataset.cat;renderChips();}else commit(b.dataset.cat);};
+  $('chips').onclick=function(e){var b=e.target.closest('.chip');if(!b)return;var c=b.dataset.cat;
+    var pickSub=function(){if(add.cat===c)return;add.cat=c;add.sub=null;var sg=add.type==='expense'?suggestFor($('note').value):null;if(sg&&sg.cat===c&&sg.sub)add.sub=sg.sub;};
+    if(add.editId||add.quick!=null){pickSub();renderChips();renderSubs();}
+    else if(add.type==='expense'&&subsOf(c).length){/* only for categories the user gave subcategories: pick a sub (optional), then حفظ */
+      add.cat=null;pickSub();add.quick='sub';$('quickSave').style.display='block';renderChips();renderSubs();}
+    else commit(c);};
+  $('subRow').onclick=function(e){var b=e.target.closest('.schip');if(!b)return;add.sub=add.sub===b.dataset.sub?null:b.dataset.sub;renderSubs();};
+  $('note').oninput=noteHint;
   $('quickSave').onclick=function(){commit(add.cat);};
   $('histSearch').oninput=renderSearch;
   $('histFound').onclick=function(e){var b=e.target.closest('.tx');if(!b)return;var t=S.tx.find(function(x){return x.id===b.dataset.id;});if(t)openAdd(t);};
@@ -413,9 +457,14 @@ function bind(){
   // two-tap confirm: first tap arms the button (حذف؟), second tap deletes; undo toast afterwards
   $('catEdit').onclick=function(e){var b=e.target.closest('button');if(!b||S.cats.length<=1)return;
     if(!b.classList.contains('arm')){[].forEach.call($('catEdit').querySelectorAll('.arm'),function(x){x.classList.remove('arm');x.textContent='✕';});b.classList.add('arm');b.textContent='حذف؟';return;}
-    var c=S.cats[+b.dataset.i],snap=snapshot();S.cats.splice(+b.dataset.i,1);save();renderCatEdit();toast('تم حذف «'+c.name+'»',snap);};
+    var c=S.cats[+b.dataset.i],snap=snapshot();S.cats.splice(+b.dataset.i,1);save();renderCatEdit();renderSubEdit();toast('تم حذف «'+c.name+'»',snap);};
   $('addCat').onclick=function(){var n=$('newCat').value.trim();if(!n||S.cats.some(function(c){return c.name===n;}))return;
-    S.cats.push({name:n,emoji:$('newEmoji').value.trim()||'🏷️'});save();$('newCat').value='';$('newEmoji').value='';renderCatEdit();};
+    S.cats.push({name:n,emoji:$('newEmoji').value.trim()||'🏷️'});save();$('newCat').value='';$('newEmoji').value='';renderCatEdit();renderSubEdit();};
+  $('subCat').onchange=function(){subSel=this.value;renderSubEdit();};
+  $('addSub').onclick=addSub;$('newSub').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();addSub();}};
+  $('subEdit').onclick=function(e){var b=e.target.closest('button');if(!b)return;
+    if(!b.classList.contains('arm')){[].forEach.call($('subEdit').querySelectorAll('.arm'),function(x){x.classList.remove('arm');x.textContent='✕';});b.classList.add('arm');b.textContent='حذف؟';return;}
+    var l=subsOf(subSel),n=l[+b.dataset.i],snap=snapshot();l.splice(+b.dataset.i,1);if(!l.length)delete S.subs[subSel];save();renderSubEdit();toast('تم حذف «'+n+'»',snap);};
   $('exportBtn').onclick=exportBackup;
   $('padSeg').onclick=function(e){var b=e.target.closest('button');if(!b)return;S.numpad=b.dataset.v;save();applyPad();};
   $('numpad').addEventListener('click',function(e){var b=e.target.closest('button');if(b)pressPad(b.dataset.k);});
@@ -425,6 +474,7 @@ function bind(){
   $('smsLink').onclick=openSms;
   $('smsIn').oninput=parseSms;
   $('smsPaste').onclick=function(){navigator.clipboard.readText().then(function(t){$('smsIn').value=t||'';parseSms();}).catch(function(){$('smsIn').focus();});};
+  $('smsOut').onchange=function(e){if(e.target.id==='smsCat'){var r=sms.r||{};fillSmsSub(e.target.value,r.cat===e.target.value?r.sub:null);}};
   $('smsOut').onclick=function(e){if(e.target.id==='smsOk')confirmSms();
     else if(e.target.id==='smsIncome'){addTx({type:'income',amount:sms.r.amount,cat:sms.r.salary?'راتب':'دخل إضافي',date:sms.r.date||iso(today())});closeSheet();render();}};
   $('importBtn').onclick=function(){$('importFile').click();};
@@ -457,21 +507,39 @@ function looksLikeBankSms(t){if(typeof t!=='string')return false;t=t.trim();if(t
   if(!r||!(r.amount>0)||r.credit)return false;
   var kw=/شراء|مشتريات|عملية|نقاط\s*البيع|سحب|خصم|مدفوعات|حوالة\s*صادرة|سداد|purchase|\bpos\b|withdraw|debit|payment|paid|spent|transaction|بطاقة|card|مدى|mada|apple\s*pay/i;
   return kw.test(t)&&!!(r.merchant||/شراء|purchase|\bpos\b|نقاط\s*البيع|debit|خصم|سحب|withdraw/i.test(t));}
+/* v2.7.0 tap-to-paste fallback. iOS only allows clipboard.readText() from a user gesture (and shows its own «Paste» bubble), so the silent
+   read above is rejected there. When the silent read is rejected / unavailable / empty / hangs, show a small «📋 الصق رسالة البنك» button on the
+   home screen; tapping it (a gesture) reads the clipboard and runs the same looksLikeBankSms→openSms flow, else opens the normal paste sheet. */
+var clipDismissed=false;
+function showClipBar(on){var b=$('clipBar');if(!b)return;b.style.display=(on&&!clipDismissed&&S.onboarded)?'flex':'none';}
+function clipTap(){showClipBar(false);
+  var fallback=function(t){openSms(typeof t==='string'&&t.trim()?t:undefined);};
+  if(!(navigator.clipboard&&navigator.clipboard.readText)){fallback();return;}
+  var p;try{p=navigator.clipboard.readText();}catch(e){fallback();return;}
+  Promise.resolve(p).then(function(t){
+    if(typeof t==='string'&&t.trim()&&looksLikeBankSms(t)){try{localStorage.setItem(CLIP_KEY,clipHash(t));}catch(e){}openSms(t);}
+    else fallback(t);
+  }).catch(function(){fallback();});}
 function checkClipboard(){
   if(clipBusy||!S.onboarded||openSheetEl||document.visibilityState==='hidden')return;
-  if(!(navigator.clipboard&&navigator.clipboard.readText))return;
+  if(!(navigator.clipboard&&navigator.clipboard.readText)){showClipBar(true);return;}
   clipBusy=true;
-  var p;try{p=navigator.clipboard.readText();}catch(e){clipBusy=false;return;}
-  Promise.resolve(p).then(function(t){clipBusy=false;
+  /* a pending promise (iOS paste bubble) must not block later checks or hide the tap button forever */
+  var slow=setTimeout(function(){if(clipBusy){clipBusy=false;showClipBar(true);}},3000);
+  var p;try{p=navigator.clipboard.readText();}catch(e){clipBusy=false;clearTimeout(slow);showClipBar(true);return;}
+  Promise.resolve(p).then(function(t){clipBusy=false;clearTimeout(slow);
+    if(typeof t!=='string'||!t.trim()){showClipBar(true);return;}
+    showClipBar(false);   /* the silent read worked: no button needed */
     if(!t||typeof t!=='string'||!t.trim()||openSheetEl||!S.onboarded||$('onb').style.display==='flex')return;
     var h=clipHash(t),last=null;try{last=localStorage.getItem(CLIP_KEY);}catch(e){}
     if(last===h||!looksLikeBankSms(t))return;
     try{localStorage.setItem(CLIP_KEY,h);}catch(e){}
-    openSms(t);
-  }).catch(function(){clipBusy=false;});}
+    showClipBar(false);openSms(t);
+  }).catch(function(){clipBusy=false;clearTimeout(slow);showClipBar(true);});}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkClipboard();});
+$('clipGo').onclick=clipTap;$('clipX').onclick=function(){clipDismissed=true;showClipBar(false);};
 checkClipboard();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,freezePast:freezePast,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA,checkClipboard:checkClipboard,looksLikeBankSms:looksLikeBankSms};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,freezePast:freezePast,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,learnedSubs:S.merchantSubs,subs:S.subs,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA,checkClipboard:checkClipboard,looksLikeBankSms:looksLikeBankSms,clipTap:clipTap,suggestFor:suggestFor,subsOf:subsOf};
 })();
