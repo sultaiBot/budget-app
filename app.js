@@ -1,7 +1,7 @@
 /* ميزانيتي — PWA. All data stays in this browser (localStorage). No network requests except loading this app's own files. */
 (function(){
 'use strict';
-var APP_VERSION='2.5.3';
+var APP_VERSION='2.6.0';
 /* ===== Storage: NEVER rename KEY. Bump SCHEMA and add a migration step instead. ===== */
 var KEY='mizaniyati.v1';          // historical name, kept forever
 var SCHEMA=4;                      // current data schema version
@@ -448,7 +448,30 @@ function smsFromUrl(){var txt=null;try{var q=new URLSearchParams(location.search
 load();bind();applyTheme();render();if(!S.onboarded)showOnb();
 var pending=smsFromUrl();if(pending&&S.onboarded)openSms(pending);
 window.addEventListener('hashchange',function(){var t=smsFromUrl();if(t&&S.onboarded)openSms(t);});
+/* v2.6.0 clipboard capture: on load / return to foreground, read the clipboard LOCALLY (never sent anywhere); if it looks like a bank transaction SMS, open the prefilled confirm sheet.
+   Handled text is remembered by hash (mizaniyati.lastclip) so it never re-opens. Any failure (no API, permission/gesture required, empty) is silent. */
+var CLIP_KEY='mizaniyati.lastclip',clipBusy=false;
+function clipHash(t){var s=String(t).replace(/\s+/g,' ').trim(),h=5381,i;for(i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h>>>0)+'.'+s.length;}
+function looksLikeBankSms(t){if(typeof t!=='string')return false;t=t.trim();if(t.length<12||t.length>700)return false;
+  var r;try{r=SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});}catch(e){return false;}
+  if(!r||!(r.amount>0)||r.credit)return false;
+  var kw=/شراء|مشتريات|عملية|نقاط\s*البيع|سحب|خصم|مدفوعات|حوالة\s*صادرة|سداد|purchase|\bpos\b|withdraw|debit|payment|paid|spent|transaction|بطاقة|card|مدى|mada|apple\s*pay/i;
+  return kw.test(t)&&!!(r.merchant||/شراء|purchase|\bpos\b|نقاط\s*البيع|debit|خصم|سحب|withdraw/i.test(t));}
+function checkClipboard(){
+  if(clipBusy||!S.onboarded||openSheetEl||document.visibilityState==='hidden')return;
+  if(!(navigator.clipboard&&navigator.clipboard.readText))return;
+  clipBusy=true;
+  var p;try{p=navigator.clipboard.readText();}catch(e){clipBusy=false;return;}
+  Promise.resolve(p).then(function(t){clipBusy=false;
+    if(!t||typeof t!=='string'||!t.trim()||openSheetEl||!S.onboarded||$('onb').style.display==='flex')return;
+    var h=clipHash(t),last=null;try{last=localStorage.getItem(CLIP_KEY);}catch(e){}
+    if(last===h||!looksLikeBankSms(t))return;
+    try{localStorage.setItem(CLIP_KEY,h);}catch(e){}
+    openSms(t);
+  }).catch(function(){clipBusy=false;});}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkClipboard();});
+checkClipboard();
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(function(p){if(!p)return navigator.storage.persist();}).catch(function(){});}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('sw.js').catch(function(){});}
-window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,freezePast:freezePast,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA};
+window.App={S:function(){return S;},cycleFor:cycleFor,summary:summary,history:history,compare:compare,addTx:addTx,setCurrentBudget:setCurrentBudget,budgetFor:budgetFor,freezePast:freezePast,importBackup:importBackup,render:render,calDays:calDays,openCal:openCal,searchTx:searchTx,allowance:allowance,ringState:ringState,heatLevel:heatLevel,daysToPay:daysToPay,payTxt:payTxt,padKey:padKey,pressPad:pressPad,smsFromUrl:smsFromUrl,parseSms:function(t){return SmsParse.parse(t,{cats:catNames(),learned:S.merchantCats,ref:today()});},VERSION:APP_VERSION,SCHEMA:SCHEMA,checkClipboard:checkClipboard,looksLikeBankSms:looksLikeBankSms};
 })();
