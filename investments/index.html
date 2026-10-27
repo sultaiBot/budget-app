@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e8a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="رحلتي المالية">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; manifest-src 'self'; worker-src 'self'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<script>
+try {
+  var st = JSON.parse(localStorage.getItem('rihlati.maliya.v1') || '{}');
+  if (st.theme === 'light' || st.theme === 'dark') document.documentElement.setAttribute('data-theme', st.theme);
+} catch (e) {}
+</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>رحلتي المالية — متابعة الاستثمارات والادخارات</title>
+<style>
+:root {
+  --bg: #f4f6f3;
+  --card: #ffffff;
+  --card-alt: #f9fbf9;
+  --text: #13221c;
+  --muted: #687770;
+  --line: #e4e9e5;
+  --acc: #0e8a5f;
+  --acc-dark: #0a6847;
+  --acc-soft: #e1f4ec;
+  --gold: #d4941c;
+  --gold-soft: #fef6e0;
+  --gold-border: #f2cb72;
+  --red: #d64545;
+  --red-soft: #fbeaea;
+  --blue: #2b6cb0;
+  --blue-soft: #ebf4ff;
+  --purple: #6b46c1;
+  --purple-soft: #f3ebff;
+  --shadow: 0 3px 16px rgba(15, 35, 27, 0.05);
+  --r: 22px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #0c1210;
+  --card: #161f1c;
+  --card-alt: #1c2723;
+  --text: #e7f0ec;
+  --muted: #8b9b94;
+  --line: #27342f;
+  --acc: #32c48e;
+  --acc-dark: #52d8a6;
+  --acc-soft: #143529;
+  --gold: #f5c542;
+  --gold-soft: #332912;
+  --gold-border: #7a5c18;
+  --red: #ff6b6b;
+  --red-soft: #3a1d1d;
+  --blue: #63b3ed;
+  --blue-soft: #1a2c3e;
+  --purple: #b794f4;
+  --purple-soft: #291d40;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1210;
+    --card: #161f1c;
+    --card-alt: #1c2723;
+    --text: #e7f0ec;
+    --muted: #8b9b94;
+    --line: #27342f;
+    --acc: #32c48e;
+    --acc-dark: #52d8a6;
+    --acc-soft: #143529;
+    --gold: #f5c542;
+    --gold-soft: #332912;
+    --gold-border: #7a5c18;
+    --red: #ff6b6b;
+    --red-soft: #3a1d1d;
+    --blue: #63b3ed;
+    --blue-soft: #1a2c3e;
+    --purple: #b794f4;
+    --purple-soft: #291d40;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Arabic", "Segoe UI", "Noto Sans Arabic", Tahoma, sans-serif;
+  line-height: 1.5;
+}
+body {
+  max-width: 1060px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 0 16px calc(98px + env(safe-area-inset-bottom));
+}
+.n {
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+  white-space: nowrap;
+}
+body.privacy-on .priv-num {
+  filter: blur(8px);
+  user-select: none;
+  transition: filter 0.2s;
+}
+button {
+  font: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #0e8a5f, #09584a);
+  display: grid;
+  place-items: center;
+  color: #f5c542;
+  font-size: 23px;
+  box-shadow: 0 4px 12px rgba(14, 138, 95, 0.25);
+  flex: none;
+}
+.brand-title h1 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+.brand-title small {
+  display: block;
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card);
+  font-size: 18px;
+  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+  transition: transform 0.12s, background 0.2s;
+  border: 1px solid var(--line);
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn.active { background: var(--acc-soft); color: var(--acc); border-color: var(--acc); }
+
+/* Security & Status Meta Bar */
+.meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.meta-strip .badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--acc);
+  font-weight: 700;
+  background: var(--acc-soft);
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 12.5px;
+}
+.meta-strip .badge-sec {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--acc);
+  font-weight: 700;
+  background: var(--acc-soft);
+  padding: 4px 11px;
+  border-radius: 99px;
+  font-size: 12px;
+  border: 1px solid rgba(14, 138, 95, 0.25);
+  cursor: pointer;
+}
+.meta-strip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--acc);
+}
+
+/* Navigation Tabs (6 tabs) */
+.nav-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
+  z-index: 20;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+.nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+.nav-tab .ico { font-size: 18px; line-height: 1.1; }
+.nav-tab.on {
+  color: var(--acc);
+  background: var(--acc-soft);
+  font-weight: 700;
+}
+@media (min-width: 780px) {
+  body { padding-bottom: 50px; }
+  .nav-tabs {
+    position: sticky;
+    top: 8px;
+    bottom: auto;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    padding: 5px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .nav-tab {
+    flex-direction: row;
+    gap: 7px;
+    font-size: 13.5px;
+    padding: 10px 10px;
+  }
+}
+
+/* Views */
+.view-pane { display: none; animation: fadeIn 0.18s ease-out; }
+.view-pane.on { display: block; }
+@keyframes fadeIn { from { opacity: 0.4; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* Hero Section */
+.hero-card {
+  background: linear-gradient(145deg, #0d6e4d 0%, #094735 100%);
+  color: #ffffff;
+  border-radius: 26px;
+  padding: 22px 20px 18px;
+  box-shadow: 0 10px 28px rgba(9, 71, 53, 0.22);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+:root[data-theme="dark"] .hero-card {
+  background: linear-gradient(145deg, #123e2f 0%, #0b261d 100%);
+  border: 1px solid #225c46;
+}
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hero-lbl {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+}
+.hero-val {
+  font-size: clamp(34px, 6vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin: 4px 0 2px;
+}
+.hero-val .cur {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f5c542;
+  margin-right: 6px;
+}
+.hero-alloc-pill {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  backdrop-filter: blur(6px);
+}
+.hero-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.hero-kpi {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.hero-kpi .k-lbl {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hero-kpi .k-val {
+  font-size: 21px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+.hero-kpi .k-sub {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 3px;
+}
+.hero-period-bar {
+  margin-top: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.hero-period-bar .p-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Quick Action Buttons */
+.quick-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.qbtn {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: right;
+  box-shadow: var(--shadow);
+  transition: transform 0.12s, border-color 0.2s;
+}
+.qbtn:hover { border-color: var(--acc); }
+.qbtn:active { transform: scale(0.98); }
+.qbtn .q-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex: none;
+}
+.qbtn.q-primary .q-ico { background: var(--acc-soft); color: var(--acc); }
+.qbtn.q-gold .q-ico { background: var(--gold-soft); color: var(--gold); }
+.qbtn.q-blue .q-ico { background: var(--blue-soft); color: var(--blue); }
+.qbtn.q-purple .q-ico { background: var(--purple-soft); color: var(--purple); }
+.qbtn .q-txt b { display: block; font-size: 14.5px; }
+.qbtn .q-txt small { color: var(--muted); font-size: 12px; display: block; }
+
+/* Section Headers & Cards */
+.sec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 22px 4px 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sec-head h2 {
+  font-size: 16.5px;
+  font-weight: 800;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.sec-head small { color: var(--muted); font-size: 12.5px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+}
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.card-title h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+}
+.card-title small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Grid helpers */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+/* Portfolio Card */
+.port-card {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.port-card.school { border-top: 5px solid var(--acc); }
+.port-card.smart { border-top: 5px solid var(--gold); }
+.port-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.port-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 4px 12px;
+  border-radius: 10px;
+}
+.port-card.school .port-badge { background: var(--acc-soft); color: var(--acc); }
+.port-card.smart .port-badge { background: var(--gold-soft); color: var(--gold); }
+.port-share {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+.port-big {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 4px 0 12px;
+}
+.port-big small {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13.5px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.stat-row span { color: var(--muted); }
+.stat-row b { font-weight: 700; }
+.pos { color: var(--acc) !important; }
+.neg { color: var(--red) !important; }
+.gold-txt { color: var(--gold) !important; }
+
+/* Progress Bars */
+.prog-track {
+  height: 10px;
+  background: var(--bg);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 8px 0;
+  border: 1px solid var(--line);
+}
+.prog-fill {
+  height: 100%;
+  background: var(--acc);
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+.prog-fill.gold { background: var(--gold); }
+
+/* Tables */
+.tbl-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+}
+table.data-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+table.data-tbl th {
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 1.5px solid var(--line);
+  font-size: 12.5px;
+}
+table.data-tbl td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+table.data-tbl tr:last-child td { border-bottom: none; }
+table.data-tbl tr:hover td { background: var(--card-alt); }
+table.data-tbl tr.tot-row td {
+  background: var(--acc-soft);
+  font-weight: 800;
+  border-top: 1.5px solid var(--acc);
+}
+
+/* Badges & Pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pill.ok { background: var(--acc-soft); color: var(--acc); }
+.pill.warn { background: var(--gold-soft); color: var(--gold); }
+.pill.bad { background: var(--red-soft); color: var(--red); }
+.pill.muted { background: var(--bg); color: var(--muted); }
+.pill.blue { background: var(--blue-soft); color: var(--blue); }
+
+/* Segmented controls */
+.seg-bar {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 3px;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.seg-bar button {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+.seg-bar button.on {
+  background: var(--card);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Info Callouts */
+.callout {
+  background: var(--acc-soft);
+  color: var(--text);
+  border-right: 4px solid var(--acc);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+.callout.gold {
+  background: var(--gold-soft);
+  border-right-color: var(--gold);
+}
+.callout.muted {
+  background: var(--bg);
+  border-right-color: var(--muted);
+  color: var(--muted);
+}
+
+/* Golden Editable Inputs (Excel Golden Cells) */
+.golden-input {
+  background: var(--gold-soft);
+  border: 1.5px solid var(--gold-border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 700;
+  color: var(--text);
+  width: 100%;
+  max-width: 180px;
+  outline: none;
+  transition: box-shadow 0.15s;
+}
+.golden-input:focus {
+  box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.3);
+}
+
+/* Charts & Interactive SVG */
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.chart-pt {
+  cursor: pointer;
+  transition: r 0.15s, stroke-width 0.15s;
+}
+.chart-pt:hover {
+  r: 7px;
+  stroke-width: 3px;
+}
+.chart-bar-item {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.chart-bar-item:hover {
+  opacity: 0.85;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.chart-tip {
+  position: fixed;
+  z-index: 80;
+  background: #13221c;
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  display: none;
+  max-width: 270px;
+}
+
+/* Milestone Ladder */
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.ms-step {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 10px;
+  text-align: center;
+  background: var(--bg);
+  font-size: 13px;
+}
+.ms-step.done {
+  background: var(--acc-soft);
+  border-color: var(--acc);
+  color: var(--acc);
+  font-weight: 700;
+}
+.ms-step.next {
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+  font-weight: 800;
+}
+
+/* Modals / Bottom Sheets */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 16, 13, 0.45);
+  z-index: 40;
+  display: none;
+  backdrop-filter: blur(2px);
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--card);
+  border-radius: 26px 26px 0 0;
+  padding: 16px 20px calc(26px + env(safe-area-inset-bottom));
+  z-index: 41;
+  transform: translateY(105%); display: none;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+}
+.sheet.open { display: block; transform: none; }
+.grab {
+  width: 42px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+  margin: 0 auto 12px;
+}
+.close-x {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+.sheet h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  text-align: center;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+.field {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 9px 13px;
+  margin-bottom: 10px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 15px;
+  background: var(--acc);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15.5px;
+  margin-top: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active { transform: scale(0.99); }
+.btn.gold { background: var(--gold); color: #161510; }
+.btn.ghost { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.btn.danger { background: var(--red-soft); color: var(--red); }
+.btn-sm {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  width: auto;
+  margin: 0;
+}
+
+/* Lock Overlay */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.lock-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 20px);
+  background: #13221c;
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 10px 18px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s;
+  z-index: 60;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.toast button {
+  color: #f5c542;
+  font-weight: 800;
+  padding: 2px 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN (AES-256-GCM / PIN Lock) -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div style="font-size:48px;margin-bottom:8px">🔒</div>
+    <h2 style="margin:0 0 6px;font-size:20px">رحلتي المالية محمية ومشفرة</h2>
+    <p style="color:var(--muted);font-size:13.5px;margin:0 0 18px">أدخل كلمة المرور / رمز القفل لفك تشفير بياناتك المحلية (AES-256-GCM)</p>
+    <div class="field">
+      <label>كلمة المرور أو الرمز السري</label>
+      <input type="password" id="unlockPassInput" placeholder="••••" dir="ltr" style="text-align:center;font-size:22px;letter-spacing:4px">
+    </div>
+    <div id="unlockErr" style="color:var(--red);font-size:13px;min-height:20px;margin-bottom:4px"></div>
+    <button class="btn" id="unlockBtn">فتح القفل وفك التشفير 🔓</button>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="brand-wrap">
+    <div class="brand-logo" aria-hidden="true">📈</div>
+    <div class="brand-title">
+      <h1>رحلتي المالية</h1>
+      <small id="headerSub">SCHOOL + SMART • متابعة الادخار والاستثمار (دراية)</small>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="secShieldBtn" title="درع الخصوصية والتشفير المحلي" aria-label="درع الأمان">🛡️</button>
+    <button class="icon-btn" id="privBtn" title="إخفاء/إظهار الأرقام (وضع الخصوصية)" aria-label="الخصوصية">👁️</button>
+    <button class="icon-btn" id="themeBtn" title="تغيير المظهر" aria-label="المظهر">🌓</button>
+    <button class="icon-btn" id="exportQuickBtn" title="تصدير Excel / نسخة احتياطية" aria-label="تصدير">📥</button>
+    <button class="icon-btn" id="setBtn" title="الإعدادات" aria-label="الإعدادات">⚙️</button>
+  </div>
+</header>
+
+<div class="meta-strip" id="metaStrip"></div>
+
+<nav class="nav-tabs" id="navTabs" aria-label="التنقل الرئيسي">
+  <button class="nav-tab on" data-tab="home"><span class="ico">🏠</span><span>رحلتي</span></button>
+  <button class="nav-tab" data-tab="charts"><span class="ico">📊</span><span>الرسوم البيانية</span></button>
+  <button class="nav-tab" data-tab="journey"><span class="ico">📈</span><span>سجل الرحلة</span></button>
+  <button class="nav-tab" data-tab="commit"><span class="ico">💸</span><span>الالتزام والحركات</span></button>
+  <button class="nav-tab" data-tab="goals"><span class="ico">🎯</span><span>أهدافي والمحطات</span></button>
+  <button class="nav-tab" data-tab="guide"><span class="ico">🛡️</span><span>الدليل والأمان</span></button>
+</nav>
+
+<!-- TAB 1: HOME (رحلتي) -->
+<main id="view-home" class="view-pane on"></main>
+
+<!-- TAB 2: CHARTS & ANALYTICS (الرسوم والتحليلات البيانية) -->
+<section id="view-charts" class="view-pane"></section>
+
+<!-- TAB 3: JOURNEY & SNAPSHOTS (سجل الرحلة واللقطات) -->
+<section id="view-journey" class="view-pane"></section>
+
+<!-- TAB 4: COMMITMENT & TRANSACTIONS (الالتزام الشهري والإيداعات) -->
+<section id="view-commit" class="view-pane"></section>
+
+<!-- TAB 5: GOALS & MILESTONES (أهدافي ومحطات الرحلة) -->
+<section id="view-goals" class="view-pane"></section>
+
+<!-- TAB 6: GUIDE & ENGINE (الدليل والمحرك والأمان) -->
+<section id="view-guide" class="view-pane"></section>
+
+<div class="chart-tip" id="chartTip"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="scrim" id="scrim"></div>
+
+<!-- SHEET: ADD / EDIT TRANSACTION -->
+<div class="sheet" id="txSheet" role="dialog" aria-labelledby="txSheetTitle">
+  <div class="grab"></div>
+  <button class="close-x" data-close aria-label="إغلاق">✕</button>
+  <h3 id="txSheetTitle">تسجيل حركة مالية</h3>
+  <input type="hidden" id="txEditId">
+  <div class="form-grid">
+    <div class="field">
+      <label>التاريخ</label>
+      <input type="date" id="txDate">
+    </div>
+    <div class="field">
+      <label>المحفظة</label>
+      <select id="txPort"></select>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field">
+      <label>نوع الحركة</label>
+      <select id="txType">
+        <option value="إيداع">إيداع (+)</option>
+        <option value="سحب">سحب (−)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>التصنيف</label>
+      <select id="txCat">
+        <option value="شهري">شهري (ضمن خطة الالتزام)</option>
+        <option value="إضافي">إضافي (مبلغ مستقل عن الخطة)</option>
+        <option value="تاريخي">تاريخي (رصيد تأسيسي حتى نقطة البداية)</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label>المبلغ (ريال سعودي — رقم موجب دائمًا)</label>
+    <input type="text" inputmode="decimal" id="txAmt" placeholder="0.00" dir="ltr">
+  </div>
+  <div class="field">
+    <label>ملاحظات (اختياري)</label>
+    <input type="text" id="txNote" maxlength="120" placeholder="مثال: إيداع راتب الشهر أو تعويض...">
+  </div>
+  <div id="txHint" class="callout muted" style="display:none;margin-bottom:8px"></div>
+  <div style="display:flex;gap:10px">
+    <button class="btn" id="txSaveBtn">حفظ الحركة ✓</button>
+    <button class="btn danger" id="txDelBtn" style="display:none;flex:0 0 110px">حذف</button>
+  </div>
+</div>
+
+<!-- SHEET: ADD / EDIT SNAPSHOT -->
+<div class="sheet" id="snapSheet" role="dialog" aria-labelledby="snapSheetTitle">
+  <div class="grab"></div>
+  <button class="close-x" data-close aria-label="إغلاق">✕</button>
+  <h3 id="snapSheetTitle">تسجيل لقطة المحافظ من دراية</h3>
+  <input type="hidden" id="snapEditId">
+  <div class="field">
+    <label>تاريخ اللقطة</label>
+    <input type="date" id="snapDate">
+  </div>
+  <div class="callout" style="margin:0 0 12px;padding:10px 12px;font-size:12.5px">
+    افتح تطبيق دراية وانسخ الأرقام الأربعة كما تظهر: <b>القيمة الحالية</b> و<b>المبلغ المستثمر الظاهر</b> لكل محفظة.
+  </div>
+  <div class="form-grid">
+    <div class="field" style="border-right:3px solid var(--acc)">
+      <label>قيمة SCHOOL الحالية (ر.س)</label>
+      <input type="text" inputmode="decimal" id="snapSchVal" placeholder="0.00" dir="ltr">
+    </div>
+    <div class="field" style="border-right:3px solid var(--acc)">
+      <label>المستثمر الظاهر SCHOOL (ر.س)</label>
+      <input type="text" inputmode="decimal" id="snapSchInv" placeholder="0.00" dir="ltr">
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field" style="border-right:3px solid var(--gold)">
+      <label>قيمة SMART الحالية (ر.س)</label>
+      <input type="text" inputmode="decimal" id="snapSmtVal" placeholder="0.00" dir="ltr">
+    </div>
+    <div class="field" style="border-right:3px solid var(--gold)">
+      <label>المستثمر الظاهر SMART (ر.س)</label>
+      <input type="text" inputmode="decimal" id="snapSmtInv" placeholder="0.00" dir="ltr">
+    </div>
+  </div>
+  <div class="field">
+    <label>ملاحظات اللقطة (اختياري)</label>
+    <input type="text" id="snapNote" maxlength="120" placeholder="مثال: لقطة نهاية الشهر بعد إيداع الراتب">
+  </div>
+  <div id="snapPreview" class="callout gold" style="margin-bottom:10px;font-size:12.5px"></div>
+  <div style="display:flex;gap:10px">
+    <button class="btn" id="snapSaveBtn">حفظ اللقطة ✓</button>
+    <button class="btn danger" id="snapDelBtn" style="display:none;flex:0 0 110px">حذف</button>
+  </div>
+</div>
+
+<!-- SHEET: SETTINGS & SECURITY -->
+<div class="sheet" id="setSheet" role="dialog" aria-labelledby="setSheetTitle">
+  <div class="grab"></div>
+  <button class="close-x" data-close aria-label="إغلاق">✕</button>
+  <h3 id="setSheetTitle">الإعدادات والأمان والنسخ الاحتياطي</h3>
+  <div id="setBody"></div>
+</div>
+
+
+<!-- SHEET: PASTE BACKUP CODE -->
+<div class="sheet" id="pasteSheet" role="dialog" aria-labelledby="pasteSheetTitle">
+  <div class="grab"></div>
+  <button class="close-x" data-close aria-label="إغلاق">✕</button>
+  <h3 id="pasteSheetTitle">📋 لصق كود البيانات السريع</h3>
+  <div class="callout" style="margin:0 0 12px;padding:10px 12px;font-size:12.5px">
+    الصق كود النسخة الاحتياطية (JSON) المنسوخ من المحادثة أو من جهازك الآخر لاستيراد كافة أرقامك ولقطاتك فوراً. جميع البيانات تبقى محلية 100% على جهازك.
+  </div>
+  <div class="field">
+    <label>كود البيانات (JSON)</label>
+    <textarea id="pasteCodeIn" rows="6" dir="ltr" placeholder="{
+  &quot;portfolios&quot;: ...,
+  &quot;transactions&quot;: ...,
+  &quot;snapshots&quot;: ...
+}" style="font-family:monospace;font-size:12.5px;resize:vertical"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" id="pasteConfirmBtn" style="flex:2">تأكيد واستيراد البيانات ✓</button>
+    <button class="btn ghost" id="pasteFromClipBtn" style="flex:1">📋 قراءة من الحافظة</button>
+  </div>
+</div>
+<input type="file" id="anyDataFileInput" accept=".xlsx,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+
+<input type="file" id="xlsxFileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<input type="file" id="jsonFileInput" accept=".json,application/json" hidden>
+
+<script src="xlsx-lite.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
